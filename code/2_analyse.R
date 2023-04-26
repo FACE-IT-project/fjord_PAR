@@ -9,20 +9,23 @@ source("code/0_functions.R")
 
 # Load data ---------------------------------------------------------------
 
+# Test file structures
+ncdump::NetCDF("data/PAR/young.nc")
+PAR_test <- tidync::tidync("data/PAR/young.nc") |> 
+  tidync::hyper_tibble()
+
 # Kongsfjorden
-fjorddata <- fl_LoadFjord("kong")
+PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR")
 
 
 # Extract bathymetry ------------------------------------------------------
 
-# all depths (what = "s" ; s for Sea), as raster
-bathy_rast <- flget_bathymetry(fjorddata, what = "s", mode = "raster", PLOT = TRUE)
-bathy_df <- flget_bathymetry(fjorddata, what = "s", mode = "3col", PLOT = TRUE)
-# coastal zone [0-200m] (what = "c" ; c for Coastal), as raster
+# as raster (mode = "raster")
 # as 3 columns data frame (mode = "3col" : longitude, latitude, depth)
-coast_df <- flget_bathymetry(fjorddata, what = "c", mode = "3col", PLOT = FALSE) |> 
-  dplyr::rename(lon = longitude, lat = latitude)
-sea_df <- flget_bathymetry(fjorddata, what = "s", mode = "3col", PLOT = FALSE) |> 
+# all depths (what = "s" ; s for Sea), as raster
+# coastal zone [0-200m] (what = "c" ; c for Coastal), as raster
+bathy_kong_rast <- flget_bathymetry(PAR_kong, what = "s", mode = "raster", PLOT = TRUE)
+bathy_kong_df <- flget_bathymetry(PAR_kong, what = "s", mode = "3col", PLOT = TRUE) |> 
   dplyr::rename(lon = longitude, lat = latitude)
 
 
@@ -36,6 +39,26 @@ PB2012 <- flget_optics(fjorddata, "PARbottom", "Yearly", year = 2012, mode = "3c
 P0global <- flget_optics(fjorddata, "PAR0m", "Global", mode = "3col")
 PBglobal <- flget_optics(fjorddata, "PARbottom", "Global", mode = "3col")
 kdglobal <- flget_optics(fjorddata, "kdpar", "Global", mode = "3col")
+
+# Get full annual time series
+# TODO: Turn loading code into a wrapper function for use with seven sites
+PAR_kong_yearly <- tidync::tidync("data/PAR/kong.nc") |> 
+  tidync::activate("D0,D1,D3") |> 
+  tidync::hyper_tibble() |> 
+  na.omit() |> 
+  dplyr::rename(lon = longitude, lat = latitude) |> 
+  pivot_longer(cols = YearlyPARbottom:Yearlykdpar)
+
+
+# Annual analyses ---------------------------------------------------------
+
+PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_tidy, .parallel = T)
+
+# Test plot
+unique(PAR_kong_yearly_lm$name)
+ggplot(filter(PAR_kong_yearly_lm, name == "Yearlykdpar"), aes( x = lon, y = lat)) +
+  geom_raster(aes(fill = slope)) +
+  scale_fill_gradient2()
 
 
 # p functions -------------------------------------------------------------

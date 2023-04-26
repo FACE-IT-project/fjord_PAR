@@ -9,6 +9,7 @@
 # devtools::install_github("FACE-IT-project/FjordLight")
 library(tidyverse)
 library(FjordLight)
+library(doParallel); registerDoParallel(cores = 15)
 
 
 # Metadata ----------------------------------------------------------------
@@ -69,6 +70,13 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 
 
 # Functions ---------------------------------------------------------------
+
+# Convenience wrapper for desired PAR linear model
+lm_tidy <- function(df){
+  broom::tidy(lm(value ~ Years, data = df))[2,] |> 
+    dplyr::select(estimate, std.error, p.value) |> 
+    dplyr::rename(slope = estimate)
+}
 
 # Function for finding and cleaning up points within a given region polygon
 points_in_region <- function(region_in, bbox_df, data_df){
