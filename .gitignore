@@ -47,3 +47,10 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Large downloaded PAR NetCDF files
+data/PAR/*.nc
+
+# Large metadata files
+metadata/coastline_full_df.RData
+

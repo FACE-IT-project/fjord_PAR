@@ -1,0 +1,2 @@
+Note that this folder is empty because the downloaded PAR data files are too large to host on GitHub.
+Please see "code/1_download.R" for how to populate this folder with the needed data.
