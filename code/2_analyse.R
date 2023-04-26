@@ -52,11 +52,16 @@ PAR_kong_yearly <- tidync::tidync("data/PAR/kong.nc") |>
 
 # Annual analyses ---------------------------------------------------------
 
+# Run linear models per pixel
 PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_tidy, .parallel = T)
 
 # Test plot
 unique(PAR_kong_yearly_lm$name)
-ggplot(filter(PAR_kong_yearly_lm, name == "Yearlykdpar"), aes( x = lon, y = lat)) +
+PAR_kong_yearly_lm |> 
+  filter(name == "Yearlykdpar") |> 
+  left_join(bathy_kong_df, by = c("lon", "lat")) |> 
+  filter(depth >= -200) |> 
+  ggplot(aes( x = lon, y = lat)) +
   geom_raster(aes(fill = slope)) +
   scale_fill_gradient2()
 
