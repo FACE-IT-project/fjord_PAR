@@ -13,6 +13,7 @@ source("code/0_functions.R")
 ncdump::NetCDF("data/PAR/kong.nc")
 PAR_test <- tidync::tidync("data/PAR/kong.nc") |> 
   tidync::hyper_tibble()
+rm(PAR_test); gc()
 
 # Kongsfjorden
 PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
@@ -34,14 +35,18 @@ bathy_kong_df <- flget_bathymetry(PAR_kong, what = "s", mode = "3col", PLOT = TR
 # Get time series data
 P0ts <- flget_PARbottomMonthlyTS(PAR_kong, mode = "3col")
 
+# Or rather access the NetCDF file directly
+PAR_kong_bottom <- tidync::tidync("data/PAR/kong.nc") |> tidync::hyper_tibble() |> 
+  dplyr::rename(lon = longitude, lat = latitude, value = PARbottom)
+
 # PAR as 3 columns data frame
-P02012 <- flget_optics(fjorddata, "PAR0m", "Yearly", year = 2012, mode = "3col")
-P0June <- flget_optics(fjorddata, optics = "PAR0m", period = "Monthly", month = 6, mode = "3col")
-PBJune <- flget_optics(fjorddata, optics = "PARbottom", period = "Monthly", month = 6, mode = "3col")
-PB2012 <- flget_optics(fjorddata, "PARbottom", "Yearly", year = 2012, mode = "3col")
-P0global <- flget_optics(fjorddata, "PAR0m", "Global", mode = "3col")
-PBglobal <- flget_optics(fjorddata, "PARbottom", "Global", mode = "3col")
-kdglobal <- flget_optics(fjorddata, "kdpar", "Global", mode = "3col")
+P02012 <- flget_optics(PAR_kong, "PAR0m", "Yearly", year = 2012, mode = "3col")
+P0June <- flget_optics(PAR_kong, optics = "PAR0m", period = "Monthly", month = 6, mode = "3col")
+PBJune <- flget_optics(PAR_kong, optics = "PARbottom", period = "Monthly", month = 6, mode = "3col")
+PB2012 <- flget_optics(PAR_kong, "PARbottom", "Yearly", year = 2012, mode = "3col")
+P0global <- flget_optics(PAR_kong, "PAR0m", "Global", mode = "3col")
+PBglobal <- flget_optics(PAR_kong, "PARbottom", "Global", mode = "3col")
+kdglobal <- flget_optics(PAR_kong, "kdpar", "Global", mode = "3col")
 
 # Get full annual time series
 # TODO: Turn loading code into a wrapper function for use with seven sites
@@ -56,9 +61,22 @@ PAR_kong_yearly <- tidync::tidync("data/PAR/kong.nc") |>
 # Annual analyses ---------------------------------------------------------
 
 # Run linear models per pixel
+PAR_kong_bottom_lm <- plyr::ddply(PAR_kong_bottom, c("lon", "lat", "Months"), lm_tidy, .parallel = T)
 PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_tidy, .parallel = T)
 
-# Test plot
+# Save
+save(PAR_kong_bottom_lm, file = "data/PAR_kong_bottom_lm.RData")
+save(PAR_kong_yearly_lm, file = "data/PAR_kong_yearly_lm.RData")
+
+# Test plots
+unique(PAR_kong_bottom_lm$Months)
+PAR_kong_bottom_lm |> 
+  filter(Months == 10) |> 
+  left_join(bathy_kong_df, by = c("lon", "lat")) |> 
+  filter(depth >= -200) |> 
+  ggplot(aes( x = lon, y = lat)) +
+  geom_raster(aes(fill = slope)) +
+  scale_fill_gradient2()
 unique(PAR_kong_yearly_lm$name)
 PAR_kong_yearly_lm |> 
   filter(name == "YearlyPAR0m") |> 

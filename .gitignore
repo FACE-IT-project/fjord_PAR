@@ -54,3 +54,6 @@ data/PAR/*.nc
 # Large metadata files
 metadata/coastline_full_df.RData
 
+# Data output files
+data/*.RData
+
