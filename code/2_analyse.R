@@ -10,12 +10,12 @@ source("code/0_functions.R")
 # Load data ---------------------------------------------------------------
 
 # Test file structures
-ncdump::NetCDF("data/PAR/young.nc")
-PAR_test <- tidync::tidync("data/PAR/young.nc") |> 
+ncdump::NetCDF("data/PAR/kong.nc")
+PAR_test <- tidync::tidync("data/PAR/kong.nc") |> 
   tidync::hyper_tibble()
 
 # Kongsfjorden
-PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR")
+PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
 
 
 # Extract bathymetry ------------------------------------------------------
@@ -30,6 +30,9 @@ bathy_kong_df <- flget_bathymetry(PAR_kong, what = "s", mode = "3col", PLOT = TR
 
 
 # Extract data ------------------------------------------------------------
+
+# Get time series data
+P0ts <- flget_PARbottomMonthlyTS(PAR_kong, mode = "3col")
 
 # PAR as 3 columns data frame
 P02012 <- flget_optics(fjorddata, "PAR0m", "Yearly", year = 2012, mode = "3col")
@@ -58,7 +61,7 @@ PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_t
 # Test plot
 unique(PAR_kong_yearly_lm$name)
 PAR_kong_yearly_lm |> 
-  filter(name == "Yearlykdpar") |> 
+  filter(name == "YearlyPAR0m") |> 
   left_join(bathy_kong_df, by = c("lon", "lat")) |> 
   filter(depth >= -200) |> 
   ggplot(aes( x = lon, y = lat)) +
