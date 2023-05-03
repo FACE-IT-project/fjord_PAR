@@ -6,6 +6,8 @@
 
 source("code/0_functions.R")
 
+# Light limit for macroalgae
+# 12.5 mmol m-2 h-1
 
 # Load data ---------------------------------------------------------------
 
@@ -61,12 +63,16 @@ PAR_kong_yearly <- tidync::tidync("data/PAR/kong.nc") |>
 # Annual analyses ---------------------------------------------------------
 
 # Run linear models per pixel
-PAR_kong_bottom_lm <- plyr::ddply(PAR_kong_bottom, c("lon", "lat", "Months"), lm_tidy, .parallel = T)
-PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_tidy, .parallel = T)
+# PAR_kong_bottom_lm <- plyr::ddply(PAR_kong_bottom, c("lon", "lat", "Months"), lm_tidy, .parallel = T)
+# PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_tidy, .parallel = T)
 
 # Save
-save(PAR_kong_bottom_lm, file = "data/PAR_kong_bottom_lm.RData")
-save(PAR_kong_yearly_lm, file = "data/PAR_kong_yearly_lm.RData")
+# save(PAR_kong_bottom_lm, file = "data/PAR_kong_bottom_lm.RData")
+# save(PAR_kong_yearly_lm, file = "data/PAR_kong_yearly_lm.RData")
+
+# Load
+load("data/PAR_kong_bottom_lm.RData")
+load("data/PAR_kong_yearly_lm.RData")
 
 # Test plots
 unique(PAR_kong_bottom_lm$Months)
