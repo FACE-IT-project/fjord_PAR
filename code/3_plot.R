@@ -78,7 +78,7 @@ kong_regions |>
 # Global surface
 kong_surface_global_plot <- ggplot(data = PAR_kong_global, aes(x = lon, y = lat)) +
   geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
-  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 h-1)", title = "Kongsfjorden global surface PAR") +
+  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 d-1)", title = "Kongsfjorden global surface PAR") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_surface_global.png", kong_surface_global_plot, width = 8, height = 8)
 
@@ -86,8 +86,8 @@ ggsave("figures/kong_surface_global.png", kong_surface_global_plot, width = 8, h
 kong_bottom_global_plot <- ggplot(data = filter(PAR_kong_global, depth >= -200), aes(x = lon, y = lat)) +
   geom_raster(aes(fill = GlobalPARbottom)) + geom_contour(aes(z = GlobalPARbottom), breaks = 12.5, colour = "red") +
   scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
-  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 h-1)", title = "Kongsfjorden global bottom PAR (200 m isobath)",
-       subtitle = "Red contour shows 12.5 mmol m-2 h-1") +
+  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 d-1)", title = "Kongsfjorden global bottom PAR (200 m isobath)",
+       subtitle = "Red contour shows 12.5 mmol m-2 d-1") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_bottom_global.png", kong_bottom_global_plot, width = 8, height = 8)
 
@@ -106,15 +106,15 @@ kong_bottom_global_monthly_plot <- ggplot(data = filter(PAR_kong_global_monthly,
   geom_raster(aes(fill = MonthlyPARbottom)) + geom_contour(aes(z = MonthlyPARbottom), breaks = 12.5, colour = "red") +
   scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
   facet_wrap(~Months, nrow = 2) +
-  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 h-1)", title = "Kongsfjorden global monthly bottom PAR (200 m isobath)",
-       subtitle = "Red contour shows 12.5 mmol m-2 h-1") +
+  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 d-1)", title = "Kongsfjorden global monthly bottom PAR (200 m isobath)",
+       subtitle = "Red contour shows 12.5 mmol m-2 d-1") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_bottom_global_monthly.png", kong_bottom_global_monthly_plot, width = 14, height = 8)
 
 # Yearly surface trends
 kong_surface_yearly_trend_plot <- ggplot(data = filter(PAR_kong_yearly_lm, name == "YearlyPAR0m"), aes(x = lon, y = lat)) +
   geom_raster(aes(fill = slope)) + scale_fill_gradient2() + coord_quickmap(expand = FALSE) + 
-  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 h-1)", title = "Kongsfjorden yearly surface PAR trend") +
+  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 d-1)", title = "Kongsfjorden yearly surface PAR trend") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_surface_yearly_trend.png", kong_surface_yearly_trend_plot, width = 8, height = 8)
 
@@ -122,7 +122,7 @@ ggsave("figures/kong_surface_yearly_trend.png", kong_surface_yearly_trend_plot, 
 kong_bottom_yearly_trend_plot <- ggplot(data = filter(PAR_kong_yearly_lm, name == "YearlyPARbottom", depth >= -200), 
                                         aes(x = lon, y = lat)) +
   geom_raster(aes(fill = slope_fix)) + scale_fill_gradient2() + coord_quickmap(expand = FALSE) + 
-  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 h-1)", title = "Kongsfjorden yearly bottom PAR trend (200 m isobath)",
+  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 d-1)", title = "Kongsfjorden yearly bottom PAR trend (200 m isobath)",
        subtitle = "Rounded to 1st and 99th percentiles") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_bottom_yearly_trend.png", kong_bottom_yearly_trend_plot, width = 8, height = 8)
@@ -131,7 +131,7 @@ ggsave("figures/kong_bottom_yearly_trend.png", kong_bottom_yearly_trend_plot, wi
 kong_bottom_monthly_trend_plot <- ggplot(data = filter(PAR_kong_bottom_lm, depth >= -200), aes(x = lon, y = lat)) +
   geom_raster(aes(fill = slope_fix)) + scale_fill_gradient2() + coord_quickmap(expand = FALSE) + 
   facet_wrap(~Months, nrow = 2) +
-  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 h-1)", title = "Kongsfjorden monthly bottom PAR trend (200 m isobath)",
+  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 d-1)", title = "Kongsfjorden monthly bottom PAR trend (200 m isobath)",
        subtitle = "Rounded to 1st and 99th percentiles") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_bottom_monthly_trend.png", kong_bottom_monthly_trend_plot, width = 14, height = 8)
@@ -146,7 +146,7 @@ kong_bottom_monthly_area_plot <- PAR_kong_bottom |>
   ggplot(aes(x = date, y = total_area)) +
   geom_point() + geom_line() + geom_smooth(method = "lm") +
   facet_wrap(~ Months, nrow = 2) +
-  labs(x = "Date", y = "Total area (km^2)", title = "Monthly bottom area receiving >= 12.5 mmol m-2 h-1",
+  labs(x = "Date", y = "Total area (km^2)", title = "Monthly bottom area receiving >= 12.5 mmol m-2 d-1",
        subtitle = "Note that March is always 0 km^2") +
   theme(panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_bottom_monthly_area.png", kong_bottom_monthly_area_plot, width = 14, height = 8)
