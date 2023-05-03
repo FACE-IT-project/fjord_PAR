@@ -154,8 +154,9 @@ ggsave("figures/kong_bottom_monthly_area.png", kong_bottom_monthly_area_plot, wi
 # Monthly p functions
 kong_p_monthly_plot <- ggplot(PAR_kong_p_monthly, aes(x = irradianceLevel, y = MonthlyPfunction)) +
   geom_line(aes(colour = as.factor(Months)), linewidth = 3) +
-  scale_x_continuous(trans = ggforce::trans_reverser("log10")) +
-  scale_colour_viridis_d() +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
+  scale_colour_viridis_d(option = "F") +
   labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Month") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_p_monthly.png", kong_p_monthly_plot, width = 8, height = 8)
@@ -164,11 +165,16 @@ ggsave("figures/kong_p_monthly.png", kong_p_monthly_plot, width = 8, height = 8)
 kong_p_yearly_plot <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y = YearlyPfunction)) +
   geom_line(aes(colour = Years, group = Years), linewidth = 2) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(0, 40), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
   scale_colour_viridis_c() +
   labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Year") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_p_yearly.png", kong_p_yearly_plot, width = 8, height = 8)
+
+# Combine p function plots
+kong_p_plot <- ggpubr::ggarrange(kong_p_monthly_plot, kong_p_yearly_plot, 
+                                 ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv")
+ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
 
 
 # Figure 1 ----------------------------------------------------------------
