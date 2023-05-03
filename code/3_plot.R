@@ -8,6 +8,10 @@
 # Load functions and packages
 source("code/0_functions.R")
 
+# Load data in FjordLight format
+# Kongsfjorden
+PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
+
 # Load global values
 PAR_kong_global <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1") |>  
   tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry)
@@ -29,6 +33,10 @@ PAR_kong_bottom_lm <- PAR_kong_bottom_lm |>
 load("data/PAR_kong_yearly_lm.RData")
 PAR_kong_yearly_lm <- PAR_kong_yearly_lm |> 
   left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
+
+# Load p function data
+PAR_kong_p_monthly <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D4,D2") |> tidync::hyper_tibble()
+PAR_kong_p_yearly <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D4,D3") |> tidync::hyper_tibble()
 
 
 # Prep --------------------------------------------------------------------
@@ -141,7 +149,26 @@ kong_bottom_monthly_area_plot <- PAR_kong_bottom |>
   labs(x = "Date", y = "Total area (km^2)", title = "Monthly bottom area receiving >= 12.5 mmol m-2 h-1",
        subtitle = "Note that March is always 0 km^2") +
   theme(panel.background = element_rect(colour = "black", fill  = "grey"))
-ggsave("figures/kong_bottom_monthly_area_plot.png", kong_bottom_monthly_area_plot, width = 14, height = 8)
+ggsave("figures/kong_bottom_monthly_area.png", kong_bottom_monthly_area_plot, width = 14, height = 8)
+
+# Monthly p functions
+kong_p_monthly_plot <- ggplot(PAR_kong_p_monthly, aes(x = irradianceLevel, y = MonthlyPfunction)) +
+  geom_line(aes(colour = as.factor(Months)), linewidth = 3) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10")) +
+  scale_colour_viridis_d() +
+  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Month") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+ggsave("figures/kong_p_monthly.png", kong_p_monthly_plot, width = 8, height = 8)
+
+# Yearly p functions
+kong_p_yearly_plot <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y = YearlyPfunction)) +
+  geom_line(aes(colour = Years, group = Years), linewidth = 2) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 40), expand = c(0, 0)) +
+  scale_colour_viridis_c() +
+  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Year") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+ggsave("figures/kong_p_yearly.png", kong_p_yearly_plot, width = 8, height = 8)
 
 
 # Figure 1 ----------------------------------------------------------------
