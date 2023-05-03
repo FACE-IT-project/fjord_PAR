@@ -20,7 +20,9 @@ PAR_kong_global <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1
 # Load monthly bottom data
 PAR_kong_bottom <- tidync::tidync("data/PAR/kong.nc") |> tidync::hyper_tibble() |> 
   dplyr::rename(lon = longitude, lat = latitude) |> 
-  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
+  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat")) |> 
+  mutate(date = as.Date(paste0(Years,"-",Months,"-01")),
+         pixel_id = paste0(lon,"_",lat))
 
 # Load global monthly values
 PAR_kong_global_monthly <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1,D2") |>  
@@ -233,7 +235,7 @@ fig_1_kong <- ggplot(data = PAR_kong_global, aes(x = lon, y = lat)) +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_kong, align = "hv", labels = c("B)", "C)"))
 fig_1 <- ggpubr::ggarrange(fig_1_base, fig_1_sites, labels = c("A)", ""), ncol = 1, nrow = 2, heights = c(1, 0.3)) +
-  ggpubr::bgcolor("white")
+  ggpubr::bgcolor("white") + ggpubr::border("white")
 ggsave("figures/fig_1.png", fig_1, height = 12, width = 12)
 
 
@@ -261,7 +263,8 @@ fig_2_kong_yearly <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y = Year
 
 # Combine p function plots
 fig_2 <- ggpubr::ggarrange(fig_2_kong_monthly, fig_2_kong_yearly, 
-                           ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv")
+                           ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv") +
+  ggpubr::bgcolor("white") + ggpubr::border("white")
 ggsave("figures/fig_2.png", fig_2, width = 14, height = 8)
 
 
@@ -271,6 +274,46 @@ ggsave("figures/fig_2.png", fig_2, width = 14, height = 8)
 # With an extra facet attached to each map showing the annual time series of change for the three PAR variables
 # The overall average would be shown as a thick black line, with the values for each pixel shown as thin grey
 # It may be ideal to break these up into inner, middle, and outer fjord values, too
+
+# NB: Showing PAR as a simple time series doesn't work great...
+# ggplot(PAR_kong_bottom, aes(x = date, y = PARbottom)) +
+#   geom_line(aes(group = pixel_id))
+
+# Global monthly bottom values
+fig_3a <- ggplot(data = filter(PAR_kong_global_monthly, depth >= -200), aes(x = lon, y = lat)) +
+  geom_raster(aes(fill = MonthlyPARbottom)) + geom_contour(aes(z = MonthlyPARbottom), breaks = 12.5, colour = "red") +
+  scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
+  facet_wrap(~Months, nrow = 2) +
+  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 d-1)", title = "Kongsfjorden global monthly bottom PAR (200 m isobath)",
+       subtitle = "Red contour shows 12.5 mmol m-2 d-1") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+
+# Monthly bottom trends
+fig_3b <- ggplot(data = filter(PAR_kong_bottom_lm, depth >= -200), aes(x = lon, y = lat)) +
+  geom_raster(aes(fill = slope_fix)) + scale_fill_gradient2() + coord_quickmap(expand = FALSE) + 
+  facet_wrap(~Months, nrow = 2) +
+  labs(x = NULL, y = NULL, fill = "PAR/year\n(mmol m-2 d-1)", title = "Kongsfjorden monthly bottom PAR trend (200 m isobath)",
+       subtitle = "Rounded to 1st and 99th percentiles") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+
+# Monthly trends in available area
+fig_3c <- PAR_kong_bottom |> 
+  filter(PARbottom >= 12.5) |> 
+  summarise(total_area = sum(area), .by = c("Years", "Months", "date")) |> 
+  # Manually add a blank value for Month 3 to maintain grid shape
+  rbind(data.frame(Years = 2003, Months = 3, date = as.Date("2003-03-01"), total_area = NA)) |> 
+  ggplot(aes(x = date, y = total_area, colour = as.factor(Months))) +
+  geom_point() + geom_line() + geom_smooth(method = "lm") +
+  scale_colour_viridis_d(option = "F") +
+  labs(x = "Date", y = "Total area (km^2)", colour = "Month",
+       title = "Monthly bottom area receiving >= 12.5 mmol m-2 d-1",
+       subtitle = "Note that March is always 0 km^2") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+
+# Combine and save
+fig_3 <- ggpubr::ggarrange(fig_3a, fig_3b, fig_3c, align = "v", labels = c("A)", "B)", "C)"), ncol = 1, nrow = 3)  +
+  ggpubr::bgcolor("white") + ggpubr::border("white")
+ggsave("figures/fig_3.png", height = 22, width = 12)
 
 
 # Table 1 -----------------------------------------------------------------
