@@ -241,6 +241,29 @@ ggsave("figures/fig_1.png", fig_1, height = 12, width = 12)
 # p functions per site
 # Similar to how they are shown in the other two publications that came before
 
+# Monthly p functions
+fig_2_kong_monthly <- ggplot(PAR_kong_p_monthly, aes(x = irradianceLevel, y = MonthlyPfunction)) +
+  geom_line(aes(colour = as.factor(Months)), linewidth = 3) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
+  scale_colour_viridis_d(option = "F") +
+  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Month") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+
+# Yearly p functions
+fig_2_kong_yearly <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y = YearlyPfunction)) +
+  geom_line(aes(colour = Years, group = Years), linewidth = 2) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
+  scale_colour_viridis_c() +
+  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Year") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+
+# Combine p function plots
+fig_2 <- ggpubr::ggarrange(fig_2_kong_monthly, fig_2_kong_yearly, 
+                           ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv")
+ggsave("figures/fig_2.png", fig_2, width = 14, height = 8)
+
 
 # Figure 3 ----------------------------------------------------------------
 # Maps + time series that show which regions are inhabitable, and how they have changed over time
