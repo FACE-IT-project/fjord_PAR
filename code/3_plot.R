@@ -7,6 +7,7 @@
 
 # Load functions and packages
 source("code/0_functions.R")
+library(ggOceanMaps)
 
 # Load data in FjordLight format
 # Kongsfjorden
@@ -180,6 +181,60 @@ ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
 # Figure 1 ----------------------------------------------------------------
 # Map of the study area + seven sites showing PAR in some way
 # Probably global average surface values
+
+# Study sites
+site_points <- data.frame(site = factor(x = c("Kongsfjorden", "Isfjorden", "Storfjorden", 
+                                              "Young Sound", "Qeqertarsuup Tunua", "Nuup Kangerlua", 
+                                              "Porsangerfjorden"),
+                                        levels = c("Kongsfjorden", "Isfjorden","Storfjorden", 
+                                                   "Young Sound", "Qeqertarsuup Tunua", "Nuup Kangerlua", 
+                                                   "Porsangerfjorden")),
+                          lon = c(11.845, 14.365, 19.88, -21.237, -52.555, -50.625, 25.75),
+                          lat = c(78.98, 78.235, 77.78, 74.517, 69.36, 64.405, 70.6))
+
+# Full study area
+fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
+  # Other labels
+  geom_spatial_label(aes(x = 0, y = 78, label = "Fram\nStrait"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  geom_spatial_label(aes(x = 27, y = 79, label = "Svalbard"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  geom_spatial_label(aes(x = 40, y = 74, label = "Barents Sea"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  geom_spatial_label(aes(x = 0, y = 73.5, label = "Greenland\nSea"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  geom_spatial_label(aes(x = 0, y = 68, label = "Norwegian\nSea"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  geom_spatial_label(aes(x = -40, y = 76, label = "Greenland"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  geom_spatial_label(aes(x = 19, y = 70.5, label = "Northern\nNorway"), 
+                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  # Site points
+  geom_spatial_point(data = site_points, size = 6, crs = 4326,
+                     aes(x = lon, y = lat), colour = "black") +
+  geom_spatial_point(data = site_points, size = 5, crs = 4326,
+                     aes(x = lon, y = lat, colour = site)) +
+  scale_colour_manual("Site", values = site_colours) +
+  # Other minutia
+  labs(x = NULL, y = NULL) +
+  theme(panel.border = element_rect(colour = "black", fill = NA),
+        panel.background = element_rect(fill = NA, colour = "black"),
+        plot.background = element_rect(fill = "white", colour = NA),
+        axis.text = element_text(colour = "black", size = 10),
+        legend.position = c(0.9195, 0.31),
+        legend.box.margin = margin(10, 10, 10, 10), 
+        legend.box.background = element_rect(fill = "white", colour = "black"))
+# fig_1_base
+
+# Add Surface PAR site panels
+fig_1_kong <- ggplot(data = PAR_kong_global, aes(x = lon, y = lat)) +
+  geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
+  labs(x = NULL, y = NULL, fill = "PAR\n(mmol m-2 d-1)", title = "Kongsfjorden global surface PAR") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_kong, align = "hv", labels = c("B)", "C)"))
+fig_1 <- ggpubr::ggarrange(fig_1_base, fig_1_sites, labels = c("A)", ""), ncol = 1, nrow = 2, heights = c(1, 0.3)) +
+  ggpubr::bgcolor("white")
+ggsave("figures/fig_1.png", fig_1, height = 12, width = 12)
 
 
 # Figure 2 ----------------------------------------------------------------
