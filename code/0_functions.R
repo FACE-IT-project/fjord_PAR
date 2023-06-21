@@ -95,6 +95,14 @@ load_PAR <- function(file_name){
   ggplot(test2) +
     geom_raster(aes(fill = X2003, x = lon, y = lat))
   
+  # Another approach
+  remotes::install_github("SvenKotlarski/qmCH2018")
+  library(qmCH2018)
+  
+  test3 <- selbox.selindexbox.netcdf.cdo(x = test0$lon, y = test0$lat, 
+                                         file.org = file_name, varname = "PARbottom", workdir = "data")
+  
+  
   # Load clim monthly values
   PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>  
     hyper_filter(longitude = index %in% unique(depth_200$lon_index)) |> 
