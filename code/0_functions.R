@@ -77,12 +77,13 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 # NB: There are 8 months of data (3-10), and 20 years (2003-2022)
 monthly_cube <- function(year_val, file_name, var_name, depth_mask){
   coord_mask <- depth_mask |> dplyr::select(lon, lat)
-  PAR_brick <- brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val) # This can be repeated per month or year
-  PAR_df <- raster::extract(test1, test0) |> cbind(depth_mask) |># mutate(year = year_val+2002) |> # Years start at 2003 
+  PAR_brick <- brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val)
+  PAR_df <- raster::extract(PAR_brick, coord_mask) |> cbind(depth_mask) |>
     pivot_longer(cols = X3:X10, names_to = "month") |> 
+    # NB: Years start at 2003, hence 'year_val+2002'
     mutate(date = as.Date(paste0(year_val+2002,"-",gsub("X", "", month),"-01"))) |> 
-    dplyr::select(lon, lat, depth, date, value)
-  colnames(PAR_df)[5] <- var_name
+    dplyr::select(lon, lat, depth, area, date, value)
+  colnames(PAR_df)[6] <- var_name
   return(PAR_df)
 }
 
@@ -91,36 +92,21 @@ load_PAR <- function(file_name, depth_limit = -50){
   
   # Load global surface data
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
-    hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry)
-  
-  # Lon+lat indices
-  # lon_index <- PAR_global |> dplyr::select(lon) |> distinct() |> mutate(lon_index = 1:n())
-  # lat_index <- PAR_global |> dplyr::select(lat) |> distinct() |> mutate(lat_index = 1:n())
-  
-  # Depth mask
-  depth_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)# |> 
-    # left_join(lon_index, by = "lon") |> left_join(lat_index, by = "lat")
-  
+    hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry) |> 
+    dplyr::select(lon, lat, depth, area, everything())
 
-  
-  ggplot(test2) +
-    geom_raster(aes(fill = X2003, x = lon, y = lat))
+  # Depth mask
+  depth_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)
   
   # Load clim monthly values
-  PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>  
-    # hyper_filter(longitude = index %in% unique(depth_200$lon_indeax)) |> 
-    # hyper_filter(longitude = longitude %in% depth_200$lon,
-    #              latitude = latitude %in% depth_200$lat) |>
-    tidync::hyper_tibble() #|> dplyr::rename(lon = longitude, lat = latitude) |> 
-    left_join(PAR_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
+  PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>
+    tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude) |> 
+    right_join(depth_mask, by = c("lon", "lat")) |> 
+    dplyr::rename(month = Months) |> dplyr::select(lon, lat, depth, area, month, everything())
   
   # Load monthly bottom data
   PAR_bottom <- plyr::ldply(1:20, monthly_cube, .parallel = T,
                             file_name = file_name, var_name = "PARbottom", depth_mask = depth_mask)
-  PAR_bottom <- tidync::tidync(file_name) |> tidync::hyper_tibble() |> 
-    dplyr::rename(lon = longitude, lat = latitude) |> 
-    mutate(date = as.Date(paste0(Years,"-",Months,"-01"))) |> 
-    left_join(PAR_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat")) 
     
   # Merge all
   PAR_list <- list(PAR_global = PAR_global,

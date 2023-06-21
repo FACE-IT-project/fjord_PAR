@@ -14,6 +14,7 @@ library(ggOceanMaps)
 # PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
 
 # Load PAR data
+# NB: This takes several minutes
 PAR_kong <- load_PAR("data/PAR/kong.nc")
 PAR_is <- load_PAR("data/PAR/is.nc")
 PAR_stor <- load_PAR("data/PAR/stor.nc")
@@ -21,18 +22,6 @@ PAR_young <- load_PAR("data/PAR/young.nc")
 PAR_disko <- load_PAR("data/PAR/disko.nc")
 PAR_nuup <- load_PAR("data/PAR/nuup.nc")
 PAR_por <- load_PAR("data/PAR/por.nc")
-
-# Load monthly bottom data
-PAR_kong_bottom <- tidync::tidync("data/PAR/kong.nc") |> tidync::hyper_tibble() |> 
-  dplyr::rename(lon = longitude, lat = latitude) |> 
-  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat")) |> 
-  mutate(date = as.Date(paste0(Years,"-",Months,"-01")),
-         pixel_id = paste0(lon,"_",lat))
-
-# Load global monthly values
-PAR_kong_global_monthly <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1,D2") |>  
-  tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude) |> 
-  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
 
 # Load trend data
 load("data/PAR_kong_bottom_lm.RData")
