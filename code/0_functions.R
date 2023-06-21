@@ -72,46 +72,51 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 
 # Functions ---------------------------------------------------------------
 
+# Multi-core-able function to extract 3D cubes from PAR NetCDF to combine into 4D
+# E.g. Extract a stack of monthly data by year, and then bind all yearly cubes together
+# NB: There are 8 months of data (3-10), and 20 years (2003-2022)
+monthly_cube <- function(year_val, file_name, var_name, depth_mask){
+  coord_mask <- depth_mask |> dplyr::select(lon, lat)
+  PAR_brick <- brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val) # This can be repeated per month or year
+  PAR_df <- raster::extract(test1, test0) |> cbind(depth_mask) |># mutate(year = year_val+2002) |> # Years start at 2003 
+    pivot_longer(cols = X3:X10, names_to = "month") |> 
+    mutate(date = as.Date(paste0(year_val+2002,"-",gsub("X", "", month),"-01"))) |> 
+    dplyr::select(lon, lat, depth, date, value)
+  colnames(PAR_df)[5] <- var_name
+  return(PAR_df)
+}
+
 # Convenience wrapper to load global surface, clim values, and monthly  values
-load_PAR <- function(file_name){
+load_PAR <- function(file_name, depth_limit = -50){
   
   # Load global surface data
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
     hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry)
   
   # Lon+lat indices
-  lon_index <- PAR_global |> dplyr::select(lon) |> distinct() |> mutate(lon_index = 1:n())
-  lat_index <- PAR_global |> dplyr::select(lat) |> distinct() |> mutate(lat_index = 1:n())
+  # lon_index <- PAR_global |> dplyr::select(lon) |> distinct() |> mutate(lon_index = 1:n())
+  # lat_index <- PAR_global |> dplyr::select(lat) |> distinct() |> mutate(lat_index = 1:n())
+  
+  # Depth mask
+  depth_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)# |> 
+    # left_join(lon_index, by = "lon") |> left_join(lat_index, by = "lat")
   
 
-  # Depth mask
-  depth_mask <- PAR_global |> filter(depth >= -50) |> dplyr::select(lon, lat, depth, area) |> 
-    left_join(lon_index, by = "lon") |> left_join(lat_index, by = "lat")
-  
-  test0 <- depth_mask <- PAR_global |> filter(depth >= -50) |> dplyr::select(lon, lat)
-  test1 <- brick(file_name, values = TRUE, varname = "PARbottom", lvar = 3, level = 8) # This can be repeated per month or year
-  test2 <- raster::extract(test1, test0) |> cbind(test0)
   
   ggplot(test2) +
     geom_raster(aes(fill = X2003, x = lon, y = lat))
   
-  # Another approach
-  remotes::install_github("SvenKotlarski/qmCH2018")
-  library(qmCH2018)
-  
-  test3 <- selbox.selindexbox.netcdf.cdo(x = test0$lon, y = test0$lat, 
-                                         file.org = file_name, varname = "PARbottom", workdir = "data")
-  
-  
   # Load clim monthly values
   PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>  
-    hyper_filter(longitude = index %in% unique(depth_200$lon_index)) |> 
+    # hyper_filter(longitude = index %in% unique(depth_200$lon_indeax)) |> 
     # hyper_filter(longitude = longitude %in% depth_200$lon,
     #              latitude = latitude %in% depth_200$lat) |>
     tidync::hyper_tibble() #|> dplyr::rename(lon = longitude, lat = latitude) |> 
-    left_join(PAR_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat")) 
+    left_join(PAR_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
   
   # Load monthly bottom data
+  PAR_bottom <- plyr::ldply(1:20, monthly_cube, .parallel = T,
+                            file_name = file_name, var_name = "PARbottom", depth_mask = depth_mask)
   PAR_bottom <- tidync::tidync(file_name) |> tidync::hyper_tibble() |> 
     dplyr::rename(lon = longitude, lat = latitude) |> 
     mutate(date = as.Date(paste0(Years,"-",Months,"-01"))) |> 
@@ -151,6 +156,7 @@ points_in_region <- function(region_in, bbox_df, data_df){
 
 # Convenience wrapper for Figure 1 subplots
 # TODO: Constrain colour scale to be the same across all sites
+# TODO: Add 50 m isobath as a red line
 fig_1_subplot <- function(PAR_df, site_name){
   ggplot(data = PAR_df, aes(x = lon, y = lat)) +
     geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
