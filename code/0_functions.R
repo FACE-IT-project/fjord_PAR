@@ -83,9 +83,17 @@ load_PAR <- function(file_name){
   lon_index <- PAR_global |> dplyr::select(lon) |> distinct() |> mutate(lon_index = 1:n())
   lat_index <- PAR_global |> dplyr::select(lat) |> distinct() |> mutate(lat_index = 1:n())
   
+
   # Depth mask
-  depth_mask <- PAR_global |> filter(depth >= -200) |> dplyr::select(lon, lat, depth, area) |> 
+  depth_mask <- PAR_global |> filter(depth >= -50) |> dplyr::select(lon, lat, depth, area) |> 
     left_join(lon_index, by = "lon") |> left_join(lat_index, by = "lat")
+  
+  test0 <- depth_mask <- PAR_global |> filter(depth >= -50) |> dplyr::select(lon, lat)
+  test1 <- brick(file_name, values = TRUE, varname = "PARbottom", lvar = 3, level = 8) # This can be repeated per month or year
+  test2 <- raster::extract(test1, test0) |> cbind(test0)
+  
+  ggplot(test2) +
+    geom_raster(aes(fill = X2003, x = lon, y = lat))
   
   # Load clim monthly values
   PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>  
