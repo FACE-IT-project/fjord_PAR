@@ -8,6 +8,7 @@
 
 # devtools::install_github("FACE-IT-project/FjordLight")
 library(tidyverse)
+library(tidync)
 library(FjordLight)
 library(doParallel); registerDoParallel(cores = 15)
 
@@ -71,6 +72,44 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 
 # Functions ---------------------------------------------------------------
 
+# Convenience wrapper to load global surface, clim values, and monthly  values
+load_PAR <- function(file_name){
+  
+  # Load global surface data
+  PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
+    hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry)
+  
+  # Lon+lat indices
+  lon_index <- PAR_global |> dplyr::select(lon) |> distinct() |> mutate(lon_index = 1:n())
+  lat_index <- PAR_global |> dplyr::select(lat) |> distinct() |> mutate(lat_index = 1:n())
+  
+  # Depth mask
+  depth_mask <- PAR_global |> filter(depth >= -200) |> dplyr::select(lon, lat, depth, area) |> 
+    left_join(lon_index, by = "lon") |> left_join(lat_index, by = "lat")
+  
+  # Load clim monthly values
+  PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>  
+    hyper_filter(longitude = index %in% unique(depth_200$lon_index)) |> 
+    # hyper_filter(longitude = longitude %in% depth_200$lon,
+    #              latitude = latitude %in% depth_200$lat) |>
+    tidync::hyper_tibble() #|> dplyr::rename(lon = longitude, lat = latitude) |> 
+    left_join(PAR_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat")) 
+  
+  # Load monthly bottom data
+  PAR_bottom <- tidync::tidync(file_name) |> tidync::hyper_tibble() |> 
+    dplyr::rename(lon = longitude, lat = latitude) |> 
+    mutate(date = as.Date(paste0(Years,"-",Months,"-01"))) |> 
+    left_join(PAR_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat")) 
+    
+  # Merge all
+  PAR_list <- list(PAR_global = PAR_global,
+                   PAR_clim = PAR_clim,
+                   PAR_bottom = PAR_bottom)
+  
+  # Exit
+  return(PAR_list)
+}
+
 # Convenience wrapper for desired PAR linear model
 lm_tidy <- function(df){
   broom::tidy(lm(value ~ Years, data = df))[2,] |> 
@@ -92,4 +131,14 @@ points_in_region <- function(region_in, bbox_df, data_df){
     mutate(region = region_in) %>%
     dplyr::select(lon, lat, region)
   return(coords_in)
+}
+
+# Convenience wrapper for Figure 1 subplots
+# TODO: Constrain colour scale to be the same across all sites
+fig_1_subplot <- function(PAR_df, site_name){
+  ggplot(data = PAR_df, aes(x = lon, y = lat)) +
+    geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
+    labs(x = NULL, y = NULL, fill = "PAR\n(mol m-2 d-1)", title = site_name) +
+    theme(legend.position = "bottom", 
+          panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 3))
 }

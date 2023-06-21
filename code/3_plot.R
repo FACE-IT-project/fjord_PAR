@@ -1,6 +1,6 @@
 # code/3_plot
 # Create the figures/tables used in the manuscript
-# Also contans code for exploratory visualisations
+# Also contains code for exploratory visualisations
 
 
 # Setup -------------------------------------------------------------------
@@ -11,11 +11,16 @@ library(ggOceanMaps)
 
 # Load data in FjordLight format
 # Kongsfjorden
-PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
+# PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
 
-# Load global values
-PAR_kong_global <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1") |>  
-  tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry)
+# Load PAR data
+PAR_kong <- load_PAR("data/PAR/kong.nc")
+PAR_is <- load_PAR("data/PAR/is.nc")
+PAR_stor <- load_PAR("data/PAR/stor.nc")
+PAR_young <- load_PAR("data/PAR/young.nc")
+PAR_disko <- load_PAR("data/PAR/disko.nc")
+PAR_nuup <- load_PAR("data/PAR/nuup.nc")
+PAR_por <- load_PAR("data/PAR/por.nc")
 
 # Load monthly bottom data
 PAR_kong_bottom <- tidync::tidync("data/PAR/kong.nc") |> tidync::hyper_tibble() |> 
@@ -228,6 +233,7 @@ fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
 # fig_1_base
 
 # Add Surface PAR site panels
+fig_1_kong <- fig_1_subplot(PAR_kong_global, "Kongsfjorden")
 fig_1_kong <- ggplot(data = PAR_kong_global, aes(x = lon, y = lat)) +
   geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
   labs(x = NULL, y = NULL, fill = "PAR\n(mol m-2 d-1)", title = "Kongsfjorden global surface PAR") +
