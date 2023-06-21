@@ -117,6 +117,31 @@ load_PAR <- function(file_name, depth_limit = -50){
   return(PAR_list)
 }
 
+# Multi-core this to quickly load+merge global p functions for all sites
+# TODO: Change to first search for local files
+load_p_global <- function(site_name_short){
+  tidync::tidync(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")) |> 
+    tidync::activate("D4") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
+# Multi-core this to quickly load+merge monthly clim p functions for all sites
+# TODO: Change to first search for local files
+load_p_clim <- function(site_name_short){
+  tidync::tidync(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")) |> 
+    tidync::activate("D4,D2") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
+# Multi-core this to quickly load+merge monthly clim p functions for all sites
+# TODO: Change to first search for local files
+load_p_annual <- function(site_name_short){
+  tidync::tidync(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")) |> 
+    tidync::activate("D4,D3") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
+
 # Convenience wrapper for desired PAR linear model
 lm_tidy <- function(df){
   broom::tidy(lm(value ~ Years, data = df))[2,] |> 
