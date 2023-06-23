@@ -35,7 +35,14 @@ bathy_por <- PAR_por$PAR_global |> dplyr::select(lon, lat, depth, area) |> disti
 # Annual analyses ---------------------------------------------------------
 
 # Get range of summary states per time step
-PAR_kong_annual_summary <- PAR_kong$PAR_global
+PAR_kong_annual_summary_surface <- PAR_kong$PAR_annual |> 
+  summarise(YearlyPAR0m_min = min(YearlyPAR0m, na.rm = T),
+            YearlyPAR0m_10th = quantile(YearlyPAR0m, 0.1, na.rm = T),
+            YearlyPAR0m_median = median(YearlyPAR0m, na.rm = T),
+            YearlyPAR0m_mean = mean(YearlyPAR0m, na.rm = T),
+            YearlyPAR0m_90th = quantile(YearlyPAR0m, 0.9, na.rm = T),
+            YearlyPAR0m_max = max(YearlyPAR0m, na.rm = T),
+            .by = c("year"))
 
 # Run linear models per pixel
 # PAR_kong_bottom_lm <- plyr::ddply(PAR_kong_bottom, c("lon", "lat", "Months"), lm_tidy, .parallel = T)
@@ -73,6 +80,10 @@ PAR_kong_yearly_lm |>
 # Run linear models per month
 # This would be too gnarly to do per pixel
 # Rather do this for the total+average irradiance received at the surface per month
+
+
+# Spatial analyses --------------------------------------------------------
+
 
 
 # p functions -------------------------------------------------------------

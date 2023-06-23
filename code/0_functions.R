@@ -72,10 +72,24 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 
 # Functions ---------------------------------------------------------------
 
+
+# Multi-core-able function to extract layers from PAR NetCDF to combine into 3D
+filter_3D_cube <- function(var_name, file_name, depth_mask){
+  coord_mask <- depth_mask |> dplyr::select(lon, lat)
+  PAR_brick <- raster::brick(file_name, values = TRUE, varname = var_name)
+  PAR_df <- raster::extract(PAR_brick, coord_mask) |> cbind(depth_mask) |>
+    pivot_longer(cols = c(-lon, -lat, -depth, -area), names_to = "date") |> 
+    mutate(date = as.numeric(gsub("X", "", date))) |> 
+    dplyr::select(lon, lat, depth, area, date, value) #|> 
+    # mutate(lon = round(lon, 5), lat = round(lat, 5), depth = round(depth, 6), area = round(area, 10))
+  colnames(PAR_df)[6] <- var_name
+  return(PAR_df)
+}
+
 # Multi-core-able function to extract 3D cubes from PAR NetCDF to combine into 4D
 # E.g. Extract a stack of monthly data by year, and then bind all yearly cubes together
 # NB: There are 8 months of data (3-10), and 20 years (2003-2022)
-monthly_cube <- function(year_val, file_name, var_name, depth_mask){
+filter_4D_cube <- function(year_val, file_name, var_name, depth_mask){
   coord_mask <- depth_mask |> dplyr::select(lon, lat)
   PAR_brick <- raster::brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val)
   PAR_df <- raster::extract(PAR_brick, coord_mask) |> cbind(depth_mask) |>
@@ -99,21 +113,28 @@ load_PAR <- function(file_name, depth_limit = -50){
   depth_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)
   
   # Load annual values
-  PAR_annual <- tidync(file_name) |> activate("D0,D1,D3") |>
-    tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, year = Years) |> 
-    left_join(depth_mask, by = c("lon", "lat")) |> dplyr::select(lon, lat, depth, area, year, everything())
+  PAR_YearlyPAR0m <- filter_3D_cube("YearlyPAR0m", file_name, depth_mask)
+  PAR_Yearlykdpar <- filter_3D_cube("Yearlykdpar", file_name, depth_mask)
+  PAR_YearlyPARbottom <- filter_3D_cube("YearlyPARbottom", file_name, depth_mask)
+  PAR_annual <- left_join(PAR_YearlyPAR0m, PAR_Yearlykdpar, by = c("lon", "lat", "depth", "area", "date")) |> 
+    left_join(PAR_YearlyPARbottom, by = c("lon", "lat", "depth", "area", "date"))
+  rm(PAR_YearlyPAR0m, PAR_Yearlykdpar, PAR_YearlyPARbottom); gc()
+  # TODO: Figure out why this doesn't correctly merge by common columns
+  # PAR_annual <- plyr::ldply(c("YearlyPARbottom", "YearlyPAR0m", "Yearlykdpar"), filter_3D_cube,
+  #                           .parallel = T, file_name = file_name, depth_mask = depth_mask) |> rename(year = date)
   
   # Load clim monthly values
   PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>
-    tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, month = Months) |> 
+    tidync::hyper_tibble(force = T) |> dplyr::rename(lon = longitude, lat = latitude, month = Months) |> 
     left_join(depth_mask, by = c("lon", "lat")) |> dplyr::select(lon, lat, depth, area, month, everything())
   
   # Load monthly bottom data
-  PAR_bottom <- plyr::ldply(1:20, monthly_cube, .parallel = T,
+  PAR_bottom <- plyr::ldply(1:20, filter_4D_cube, .parallel = T,
                             file_name = file_name, var_name = "PARbottom", depth_mask = depth_mask)
     
   # Merge all
   PAR_list <- list(PAR_global = PAR_global,
+                   PAR_annual = PAR_annual,
                    PAR_clim = PAR_clim,
                    PAR_bottom = PAR_bottom)
   
@@ -126,15 +147,21 @@ load_results <- function(site_name){
   
 }
 
-# Multi-core this to quickly load+merge global p functions for all sites
-load_p_global <- function(site_name_short){
-  
-  # Find file name
+# Takes site short name and returns the local or pCloud location of the PAR NetCDF
+file_name_search <- function(site_name_short){
   if(file.exists(paste0("data/PAR/",site_name_short,".nc"))) {
     file_name <- paste0("data/PAR/",site_name_short,".nc")
   } else if(file.exists(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc"))) {
     file_name <- paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")
   }
+  return(file_name)
+}
+
+# Multi-core this to quickly load+merge global p functions for all sites
+load_p_global <- function(site_name_short){
+  
+  # Find file name
+  file_name <- file_name_search(site_name_short)
   
   # Load data
   tidync::tidync(file_name) |> tidync::activate("D4") |> tidync::hyper_tibble() |> 
@@ -145,11 +172,7 @@ load_p_global <- function(site_name_short){
 load_p_clim <- function(site_name_short){
   
   # Find file name
-  if(file.exists(paste0("data/PAR/",site_name_short,".nc"))) {
-    file_name <- paste0("data/PAR/",site_name_short,".nc")
-  } else if(file.exists(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc"))) {
-    file_name <- paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")
-  }
+  file_name <- file_name_search(site_name_short)
   
   # Load data
   tidync::tidync(file_name) |> tidync::activate("D4,D2") |> tidync::hyper_tibble() |> 
@@ -160,15 +183,23 @@ load_p_clim <- function(site_name_short){
 load_p_annual <- function(site_name_short){
   
   # Find file name
-  if(file.exists(paste0("data/PAR/",site_name_short,".nc"))) {
-    file_name <- paste0("data/PAR/",site_name_short,".nc")
-  } else if(file.exists(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc"))) {
-    file_name <- paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")
-  }
+  file_name <- file_name_search(site_name_short)
 
   # Load data
   tidync::tidync(file_name) |> tidync::activate("D4,D3") |> tidync::hyper_tibble() |> 
     mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
+# Summaries of PAR data
+PAR_summarise <- function(PAR_df, depth_limit = -50){
+  PAR_kong_annual_summary_surface <- PAR_df |> 
+    summarise(YearlyPAR0m_min = min(YearlyPAR0m, na.rm = T),
+              YearlyPAR0m_10th = quantile(YearlyPAR0m, 0.1, na.rm = T),
+              YearlyPAR0m_median = median(YearlyPAR0m, na.rm = T),
+              YearlyPAR0m_mean = mean(YearlyPAR0m, na.rm = T),
+              YearlyPAR0m_90th = quantile(YearlyPAR0m, 0.9, na.rm = T),
+              YearlyPAR0m_max = max(YearlyPAR0m, na.rm = T),
+              .by = c("year"))
 }
 
 # Convenience wrapper for desired PAR linear model
