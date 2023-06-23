@@ -56,4 +56,5 @@ metadata/coastline_full_df.RData
 
 # Data output files
 data/*.RData
+!data/*summary.RData
 
