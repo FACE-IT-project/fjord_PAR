@@ -9,19 +9,7 @@
 source("code/0_functions.R")
 library(ggOceanMaps)
 
-# Load data in FjordLight format
-# Kongsfjorden
-# PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
-
-# Load PAR data
-# NB: This takes several minutes
-PAR_kong <- load_PAR("data/PAR/kong.nc")
-PAR_is <- load_PAR("data/PAR/is.nc")
-PAR_stor <- load_PAR("data/PAR/stor.nc")
-PAR_young <- load_PAR("data/PAR/young.nc")
-PAR_disko <- load_PAR("data/PAR/disko.nc")
-PAR_nuup <- load_PAR("data/PAR/nuup.nc")
-PAR_por <- load_PAR("data/PAR/por.nc")
+# Load processed data from '2_analyse.R'
 
 # Load trend data
 load("data/PAR_kong_bottom_lm.RData")
@@ -177,6 +165,15 @@ ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
 # Map of the study area + seven sites showing PAR in some way
 # Probably global average surface values
 
+# Range of surface PAR values
+PAR_global_surface <- c(PAR_kong$PAR_global$GlobalPAR0m, PAR_is$PAR_global$GlobalPAR0m,
+                        PAR_stor$PAR_global$GlobalPAR0m, PAR_young$PAR_global$GlobalPAR0m,
+                        PAR_disko$PAR_global$GlobalPAR0m, PAR_nuup$PAR_global$GlobalPAR0m,
+                        PAR_por$PAR_global$GlobalPAR0m)
+PAR_range <- range(PAR_global_surface, na.rm = T)
+PAR_quant <- c(quantile(PAR_global_surface, 0.01, na.rm = T),
+               quantile(PAR_global_surface, 0.99, na.rm = T))
+
 # Study sites
 site_points <- data.frame(site = factor(x = c("Kongsfjorden", "Isfjorden", "Storfjorden", 
                                               "Young Sound", "Qeqertarsuup Tunua", "Nuup Kangerlua", 
@@ -216,21 +213,44 @@ fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
         panel.background = element_rect(fill = NA, colour = "black"),
         plot.background = element_rect(fill = "white", colour = NA),
         axis.text = element_text(colour = "black", size = 10),
-        legend.position = c(0.9195, 0.31),
+        legend.position = c(0.925, 0.31),
         legend.box.margin = margin(10, 10, 10, 10), 
         legend.box.background = element_rect(fill = "white", colour = "black"))
 # fig_1_base
 
 # Add Surface PAR site panels
-fig_1_kong <- fig_1_subplot(PAR_kong_global, "Kongsfjorden")
-fig_1_kong <- ggplot(data = PAR_kong_global, aes(x = lon, y = lat)) +
-  geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
-  labs(x = NULL, y = NULL, fill = "PAR\n(mol m-2 d-1)", title = "Kongsfjorden global surface PAR") +
-  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
-fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_kong, align = "hv", labels = c("B)", "C)"))
-fig_1 <- ggpubr::ggarrange(fig_1_base, fig_1_sites, labels = c("A)", ""), ncol = 1, nrow = 2, heights = c(1, 0.3)) +
+fig_1_kong <- fig_1_subplot(PAR_kong$PAR_global, "Kongsfjorden", PAR_quant)
+fig_1_is <- fig_1_subplot(PAR_is$PAR_global, "Isfjorden", PAR_quant)
+fig_1_stor <- fig_1_subplot(PAR_stor$PAR_global, "Storfjorden", PAR_quant)
+fig_1_young <- fig_1_subplot(PAR_young$PAR_global, "Young Sound", PAR_quant)
+fig_1_disko <- fig_1_subplot(PAR_disko$PAR_global, "Qeqertarsuup Tunua", PAR_quant)
+fig_1_nuup <- fig_1_subplot(PAR_nuup$PAR_global, "Nuup Kangerlua", PAR_quant)
+fig_1_por <- fig_1_subplot(PAR_por$PAR_global, "Porsangerfjorden", PAR_quant)
+
+# Get legend
+PAR_legend <- filter(PAR_kong$PAR_global) %>% 
+  mutate(x = 1:n(), y = 1) %>% 
+  ggplot() + geom_point(aes(x = x, y = y, colour = GlobalPAR0m)) +
+  scale_colour_viridis_c(limits = PAR_quant) +
+  labs(colour = "PAR\n[mol m-2 d-1]") +
+  theme(legend.position = "right", 
+        legend.key.height = unit(1, "cm"),
+        legend.key.width = unit(1, "cm"),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.box.background = element_rect(fill = NA, colour = NA))
+PAR_legend <- ggpubr::get_legend(PAR_legend)
+
+# Combine and save
+fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, PAR_legend,
+                                 fig_1_young, fig_1_disko, fig_1_nuup, fig_1_por,
+                                 ncol = 4, nrow = 2, align = "hv")#, 
+                                 # labels = c("B)", "C)", "D)", "E)", "F)", "G)", "H)", ""))
+fig_1 <- ggpubr::ggarrange(fig_1_base, fig_1_sites, 
+                           # labels = c("A)", ""), 
+                           ncol = 1, nrow = 2, heights = c(1, 0.7)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_1.png", fig_1, height = 12, width = 12)
+ggsave("figures/fig_1.png", fig_1, height = 14, width = 12)
 
 
 # Figure 2 ----------------------------------------------------------------

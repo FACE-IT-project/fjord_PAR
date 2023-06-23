@@ -77,7 +77,7 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 # NB: There are 8 months of data (3-10), and 20 years (2003-2022)
 monthly_cube <- function(year_val, file_name, var_name, depth_mask){
   coord_mask <- depth_mask |> dplyr::select(lon, lat)
-  PAR_brick <- brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val)
+  PAR_brick <- raster::brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val)
   PAR_df <- raster::extract(PAR_brick, coord_mask) |> cbind(depth_mask) |>
     pivot_longer(cols = X3:X10, names_to = "month") |> 
     # NB: Years start at 2003, hence 'year_val+2002'
@@ -94,15 +94,19 @@ load_PAR <- function(file_name, depth_limit = -50){
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
     hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry) |> 
     dplyr::select(lon, lat, depth, area, everything())
-
+  
   # Depth mask
   depth_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)
   
+  # Load annual values
+  PAR_annual <- tidync(file_name) |> activate("D0,D1,D3") |>
+    tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, year = Years) |> 
+    left_join(depth_mask, by = c("lon", "lat")) |> dplyr::select(lon, lat, depth, area, year, everything())
+  
   # Load clim monthly values
   PAR_clim <- tidync(file_name) |> activate("D0,D1,D2") |>
-    tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude) |> 
-    right_join(depth_mask, by = c("lon", "lat")) |> 
-    dplyr::rename(month = Months) |> dplyr::select(lon, lat, depth, area, month, everything())
+    tidync::hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, month = Months) |> 
+    left_join(depth_mask, by = c("lon", "lat")) |> dplyr::select(lon, lat, depth, area, month, everything())
   
   # Load monthly bottom data
   PAR_bottom <- plyr::ldply(1:20, monthly_cube, .parallel = T,
@@ -115,6 +119,11 @@ load_PAR <- function(file_name, depth_limit = -50){
   
   # Exit
   return(PAR_list)
+}
+
+# Loads all of the analyses performed per site in '2_analyse.R'
+load_results <- function(site_name){
+  
 }
 
 # Convenience wrapper for desired PAR linear model
@@ -141,12 +150,19 @@ points_in_region <- function(region_in, bbox_df, data_df){
 }
 
 # Convenience wrapper for Figure 1 subplots
-# TODO: Constrain colour scale to be the same across all sites
 # TODO: Add 50 m isobath as a red line
-fig_1_subplot <- function(PAR_df, site_name){
+fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
+  PAR_df <- PAR_df |> 
+    mutate(GlobalPAR0m = case_when(GlobalPAR0m > max(PAR_limits) ~ max(PAR_limits),
+                                   GlobalPAR0m < min(PAR_limits) ~ min(PAR_limits),
+                                   TRUE ~ GlobalPAR0m))
   ggplot(data = PAR_df, aes(x = lon, y = lat)) +
-    geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
-    labs(x = NULL, y = NULL, fill = "PAR\n(mol m-2 d-1)", title = site_name) +
-    theme(legend.position = "bottom", 
+    geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c(limits = PAR_limits) +
+    geom_contour(aes(z = depth), breaks = -50, colour = "red") +
+    coord_quickmap(expand = FALSE) + 
+    labs(x = NULL, y = NULL, fill = "PAR\n[mol m-2 d-1]", title = site_name) +
+    theme(legend.position = "none", # Remove legend
+          axis.text = element_blank(), axis.ticks = element_blank(), # Remove coords
+          panel.grid.major = element_blank(), panel.grid.minor = element_blank(), # Remove axis lines
           panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 3))
 }

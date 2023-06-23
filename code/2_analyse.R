@@ -6,61 +6,36 @@
 
 source("code/0_functions.R")
 
-# Light limit for macroalgae
-# 12.5 mmol m-2 h-1
 
 # Load data ---------------------------------------------------------------
 
-# Test file structures
-ncdump::NetCDF("data/PAR/kong.nc")
-PAR_test <- tidync::tidync("data/PAR/kong.nc") |> 
-  tidync::hyper_tibble()
-rm(PAR_test); gc()
-
-# Kongsfjorden
-PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = TRUE)
+# This loads bathymetry, pixel area, and all forms of PAR and Kd
+# NB: This takes several minutes
+PAR_kong <- load_PAR("data/PAR/kong.nc")
+PAR_is <- load_PAR("data/PAR/is.nc")
+PAR_stor <- load_PAR("data/PAR/stor.nc")
+PAR_young <- load_PAR("data/PAR/young.nc")
+PAR_disko <- load_PAR("data/PAR/disko.nc")
+PAR_nuup <- load_PAR("data/PAR/nuup.nc")
+PAR_por <- load_PAR("data/PAR/por.nc")
 
 
 # Extract bathymetry ------------------------------------------------------
 
-# as raster (mode = "raster")
-# as 3 columns data frame (mode = "3col" : longitude, latitude, depth)
-# all depths (what = "s" ; s for Sea), as raster
-# coastal zone [0-200m] (what = "c" ; c for Coastal), as raster
-bathy_kong_rast <- flget_bathymetry(PAR_kong, what = "s", mode = "raster", PLOT = TRUE)
-bathy_kong_df <- flget_bathymetry(PAR_kong, what = "s", mode = "3col", PLOT = TRUE) |> 
-  dplyr::rename(lon = longitude, lat = latitude)
-
-
-# Extract data ------------------------------------------------------------
-
-# Get time series data
-P0ts <- flget_PARbottomMonthlyTS(PAR_kong, mode = "3col")
-
-# Or rather access the NetCDF file directly
-PAR_kong_bottom <- tidync::tidync("data/PAR/kong.nc") |> tidync::hyper_tibble() |> 
-  dplyr::rename(lon = longitude, lat = latitude, value = PARbottom)
-
-# PAR as 3 columns data frame
-P02012 <- flget_optics(PAR_kong, "PAR0m", "Yearly", year = 2012, mode = "3col")
-P0June <- flget_optics(PAR_kong, optics = "PAR0m", period = "Monthly", month = 6, mode = "3col")
-PBJune <- flget_optics(PAR_kong, optics = "PARbottom", period = "Monthly", month = 6, mode = "3col")
-PB2012 <- flget_optics(PAR_kong, "PARbottom", "Yearly", year = 2012, mode = "3col")
-P0global <- flget_optics(PAR_kong, "PAR0m", "Global", mode = "3col")
-PBglobal <- flget_optics(PAR_kong, "PARbottom", "Global", mode = "3col")
-kdglobal <- flget_optics(PAR_kong, "kdpar", "Global", mode = "3col")
-
-# Get full annual time series
-# TODO: Turn loading code into a wrapper function for use with seven sites
-PAR_kong_yearly <- tidync::tidync("data/PAR/kong.nc") |> 
-  tidync::activate("D0,D1,D3") |> 
-  tidync::hyper_tibble() |> 
-  na.omit() |> 
-  dplyr::rename(lon = longitude, lat = latitude) |> 
-  pivot_longer(cols = YearlyPARbottom:Yearlykdpar)
+# NB: Not currently necessary because all data already have bathy joined to them
+bathy_kong <- PAR_kong$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+bathy_is <- PAR_is$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+bathy_stor <- PAR_stor$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+bathy_young <- PAR_young$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+bathy_disko <- PAR_disko$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+bathy_nuup <- PAR_nuup$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+bathy_por <- PAR_por$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
 
 
 # Annual analyses ---------------------------------------------------------
+
+# Get range of summary states per time step
+PAR_kong_annual_summary <- PAR_kong$PAR_global
 
 # Run linear models per pixel
 # PAR_kong_bottom_lm <- plyr::ddply(PAR_kong_bottom, c("lon", "lat", "Months"), lm_tidy, .parallel = T)
