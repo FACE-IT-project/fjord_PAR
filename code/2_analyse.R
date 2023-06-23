@@ -68,6 +68,13 @@ PAR_kong_yearly_lm |>
   scale_fill_gradient2()
 
 
+# Monthly analyses --------------------------------------------------------
+
+# Run linear models per month
+# This would be too gnarly to do per pixel
+# Rather do this for the total+average irradiance received at the surface per month
+
+
 # p functions -------------------------------------------------------------
 
 # Get surface areas from FjordLight package

@@ -126,9 +126,55 @@ load_results <- function(site_name){
   
 }
 
+# Multi-core this to quickly load+merge global p functions for all sites
+load_p_global <- function(site_name_short){
+  
+  # Find file name
+  if(file.exists(paste0("data/PAR/",site_name_short,".nc"))) {
+    file_name <- paste0("data/PAR/",site_name_short,".nc")
+  } else if(file.exists(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc"))) {
+    file_name <- paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")
+  }
+  
+  # Load data
+  tidync::tidync(file_name) |> tidync::activate("D4") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
+# Multi-core this to quickly load+merge monthly clim p functions for all sites
+load_p_clim <- function(site_name_short){
+  
+  # Find file name
+  if(file.exists(paste0("data/PAR/",site_name_short,".nc"))) {
+    file_name <- paste0("data/PAR/",site_name_short,".nc")
+  } else if(file.exists(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc"))) {
+    file_name <- paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")
+  }
+  
+  # Load data
+  tidync::tidync(file_name) |> tidync::activate("D4,D2") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
+# Multi-core this to quickly load+merge monthly clim p functions for all sites
+load_p_annual <- function(site_name_short){
+  
+  # Find file name
+  if(file.exists(paste0("data/PAR/",site_name_short,".nc"))) {
+    file_name <- paste0("data/PAR/",site_name_short,".nc")
+  } else if(file.exists(paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc"))) {
+    file_name <- paste0("~/pCloudDrive/FACE-IT_data/PAR/",site_name_short,".nc")
+  }
+
+  # Load data
+  tidync::tidync(file_name) |> tidync::activate("D4,D3") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
 # Convenience wrapper for desired PAR linear model
+# NB: Requires time variable column to be labeled 't'
 lm_tidy <- function(df){
-  broom::tidy(lm(value ~ Years, data = df))[2,] |> 
+  broom::tidy(lm(value ~ t, data = df))[2,] |> 
     dplyr::select(estimate, std.error, p.value) |> 
     dplyr::rename(slope = estimate)
 }

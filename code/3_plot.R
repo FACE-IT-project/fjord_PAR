@@ -11,6 +11,9 @@ library(ggOceanMaps)
 
 # Load processed data from '2_analyse.R'
 
+
+# Prep --------------------------------------------------------------------
+
 # Load trend data
 load("data/PAR_kong_bottom_lm.RData")
 PAR_kong_bottom_lm <- PAR_kong_bottom_lm |> 
@@ -18,13 +21,6 @@ PAR_kong_bottom_lm <- PAR_kong_bottom_lm |>
 load("data/PAR_kong_yearly_lm.RData")
 PAR_kong_yearly_lm <- PAR_kong_yearly_lm |> 
   left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
-
-# Load p function data
-PAR_kong_p_monthly <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D4,D2") |> tidync::hyper_tibble()
-PAR_kong_p_yearly <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D4,D3") |> tidync::hyper_tibble()
-
-
-# Prep --------------------------------------------------------------------
 
 # Address outliers for better plotting
 PAR_kong_bottom_lm <- PAR_kong_bottom_lm |> 
@@ -257,29 +253,31 @@ ggsave("figures/fig_1.png", fig_1, height = 14, width = 12)
 # p functions per site
 # Similar to how they are shown in the other two publications that came before
 
-# Monthly p functions
-fig_2_kong_monthly <- ggplot(PAR_kong_p_monthly, aes(x = irradianceLevel, y = MonthlyPfunction)) +
-  geom_line(aes(colour = as.factor(Months)), linewidth = 3) +
-  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
-  scale_colour_viridis_d(option = "F") +
-  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Month") +
-  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+# Load global p function data 
+PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
 
 # Yearly p functions
-fig_2_kong_yearly <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y = YearlyPfunction)) +
-  geom_line(aes(colour = Years, group = Years), linewidth = 2) +
-  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
-  scale_colour_viridis_c() +
-  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Year") +
-  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+fig_2 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPfunction)) +
+  geom_line(aes(group = site), colour = "black", linewidth = 2.5) +
+  geom_line(aes(colour = site), linewidth = 2) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
+                     breaks = c(10, 1, 0.1, 0.01, 0.001),
+                     labels = c(10, 1, 0.1, 0.01, 0.001)) + # Need to force these
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
+  scale_colour_manual("Site", values = site_colours) +
+  labs(x = "mol photons m-2 day-1", y = "% of surface receiving value [x-axis]", colour = "Site") +
+  theme(legend.position = c(0.14, 0.8), 
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        plot.margin = margin(5, 20, 5, 5),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_2
 
-# Combine p function plots
-fig_2 <- ggpubr::ggarrange(fig_2_kong_monthly, fig_2_kong_yearly, 
-                           ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv") +
-  ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_2.png", fig_2, width = 14, height = 8)
+# Save
+ggsave("figures/fig_2.png", fig_2, width = 8, height = 6)
 
 
 # Figure 3 ----------------------------------------------------------------
@@ -292,6 +290,15 @@ ggsave("figures/fig_2.png", fig_2, width = 14, height = 8)
 # NB: Showing PAR as a simple time series doesn't work great...
 # ggplot(PAR_kong_bottom, aes(x = date, y = PARbottom)) +
 #   geom_line(aes(group = pixel_id))
+
+# Load trend data
+load("data/PAR_kong_bottom_lm.RData")
+PAR_kong_bottom_lm <- PAR_kong_bottom_lm |> 
+  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
+load("data/PAR_kong_yearly_lm.RData")
+PAR_kong_yearly_lm <- PAR_kong_yearly_lm |> 
+  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
+
 
 # Global monthly bottom values
 fig_3a <- ggplot(data = filter(PAR_kong_global_monthly, depth >= -200), aes(x = lon, y = lat)) +
@@ -325,6 +332,64 @@ fig_3c <- PAR_kong_bottom |>
 fig_3 <- ggpubr::ggarrange(fig_3a, fig_3b, fig_3c, align = "v", labels = c("A)", "B)", "C)"), ncol = 1, nrow = 3)  +
   ggpubr::bgcolor("white") + ggpubr::border("white")
 ggsave("figures/fig_3.png", height = 22, width = 12)
+
+
+# Figure S1 ---------------------------------------------------------------
+# p functions per site for monthly clims
+
+# Load global p function data 
+PAR_p_clim <- plyr::ldply(long_site_names$site, load_p_clim, .parallel = T)
+
+# Yearly p functions
+fig_S1 <- ggplot(PAR_p_clim, aes(x = irradianceLevel, y = MonthlyPfunction)) +
+  geom_line(aes(group = as.factor(Months)), colour = "black", linewidth = 2.2) +
+  geom_line(aes(colour = as.factor(Months)), linewidth = 1.7) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
+                     breaks = c(1, 0.1, 0.01), labels = c(1, 0.1, 0.01)) +
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
+  scale_colour_viridis_d(option = "A") +
+  facet_wrap(~site, nrow = 2, ncol = 4) +
+  labs(x = "mol photons m-2 day-1", y = "% of surface receiving value [x-axis]", colour = "Month") +
+  theme(legend.position = c(0.875, 0.23), 
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_S1
+
+# Save
+ggsave("figures/fig_S1.png", fig_S1, width = 8, height = 6)
+
+
+# Figure S2 ---------------------------------------------------------------
+# p functions per site for annual averages
+
+# Load global p function data 
+PAR_p_annual <- plyr::ldply(long_site_names$site, load_p_annual, .parallel = T)
+
+# Yearly p functions
+fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPfunction)) +
+  # geom_line(aes(group = Years), colour = "black", linewidth = 1.5) +
+  geom_line(aes(colour = Years, group = Years), linewidth = 1) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
+                     breaks = c(1, 0.1, 0.01), labels = c(1, 0.1, 0.01)) +
+  scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
+  scale_colour_viridis_c(option = "F") +
+  facet_wrap(~site, nrow = 2, ncol = 4) +
+  labs(x = "mol photons m-2 day-1", y = "% of surface receiving value [x-axis]", colour = "Year") +
+  theme(legend.position = c(0.875, 0.23),
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_S2
+
+# Save
+ggsave("figures/fig_S2.png", fig_S2, width = 8, height = 6)
 
 
 # Table 1 -----------------------------------------------------------------
