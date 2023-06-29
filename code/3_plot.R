@@ -10,6 +10,10 @@ source("code/0_functions.R")
 library(ggOceanMaps)
 
 # Load processed data from '2_analyse.R'
+load("data/PAR_annual_summary.RData")
+load("data/PAR_clim_summary.RData")
+load("data/PAR_monthly_summary.RData")
+load("data/PAR_spatial_summary.RData")
 
 
 # Prep --------------------------------------------------------------------
@@ -281,57 +285,172 @@ ggsave("figures/fig_2.png", fig_2, width = 8, height = 6)
 
 
 # Figure 3 ----------------------------------------------------------------
-# Maps + time series that show which regions are inhabitable, and how they have changed over time
-# My thinking is to show maps of global bottom PAR (surface PAR shown in Figure 1)
-# With an extra facet attached to each map showing the annual time series of change for the three PAR variables
-# The overall average would be shown as a thick black line, with the values for each pixel shown as thin grey
-# It may be ideal to break these up into inner, middle, and outer fjord values, too
+# Ribbon plots showing annual mean PAR variables
 
-# NB: Showing PAR as a simple time series doesn't work great...
-# ggplot(PAR_kong_bottom, aes(x = date, y = PARbottom)) +
-#   geom_line(aes(group = pixel_id))
+# Surface
+fig_3a <- PAR_annual_summary |> 
+  filter(name == "YearlyPAR0m") |> 
+  left_join(long_site_names, by = "site") |> 
+  ggplot(aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = min, ymax = max, fill = site_long)) +
+  geom_ribbon(aes(ymin = q10, ymax = q90), colour = "grey", alpha = 0.2) +
+  geom_line(colour = "black") +
+  geom_line(aes(y = q50), colour = "grey") +
+  geom_point(colour = "black") +
+  geom_point(aes(y = q50), colour = "grey") +
+  facet_wrap(~site_long) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual("Site", values = site_colours) +
+  labs(x = NULL, y = "Annual average surface PAR [mol m-2 d-1]", fill = "Site") +
+  theme(legend.position = "none",
+        # legend.position = c(0.7, 0.2), 
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_3a
 
-# Load trend data
-load("data/PAR_kong_bottom_lm.RData")
-PAR_kong_bottom_lm <- PAR_kong_bottom_lm |> 
-  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
-load("data/PAR_kong_yearly_lm.RData")
-PAR_kong_yearly_lm <- PAR_kong_yearly_lm |> 
-  left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
+# Kd
+fig_3b <- PAR_annual_summary |> 
+  filter(name == "Yearlykdpar") |> 
+  left_join(long_site_names, by = "site") |> 
+  ggplot(aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = min, ymax = max, fill = site_long)) +
+  geom_ribbon(aes(ymin = q10, ymax = q90), colour = "grey", alpha = 0.2) +
+  geom_line(colour = "black") +
+  geom_line(aes(y = q50), colour = "grey") +
+  geom_point(colour = "black") +
+  geom_point(aes(y = q50), colour = "grey") +
+  facet_wrap(~site_long) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual("Site", values = site_colours) +
+  labs(x = NULL, y = "Kd", fill = "Site") +
+  theme(legend.position = "none",
+        # legend.position = c(0.14, 0.8), 
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_3b
 
-
-# Global monthly bottom values
-fig_3a <- ggplot(data = filter(PAR_kong_global_monthly, depth >= -200), aes(x = lon, y = lat)) +
-  geom_raster(aes(fill = MonthlyPARbottom)) + geom_contour(aes(z = MonthlyPARbottom), breaks = 0.3, colour = "red") +
-  scale_fill_viridis_c() + coord_quickmap(expand = FALSE) + 
-  facet_wrap(~Months, nrow = 2) +
-  labs(x = NULL, y = NULL, fill = "PAR\n(mol m-2 d-1)", title = "Kongsfjorden global monthly bottom PAR (200 m isobath)",
-       subtitle = "Red contour shows 0.3 mol m-2 d-1") +
-  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
-
-# Monthly bottom trends
-fig_3b <- ggplot(data = filter(PAR_kong_bottom_lm, depth >= -200), aes(x = lon, y = lat)) +
-  geom_raster(aes(fill = slope_fix)) + scale_fill_gradient2() + coord_quickmap(expand = FALSE) + 
-  facet_wrap(~Months, nrow = 2) +
-  labs(x = NULL, y = NULL, fill = "PAR/year\n(mol m-2 d-1)", title = "Kongsfjorden monthly bottom PAR trend (200 m isobath)",
-       subtitle = "Rounded to 1st and 99th percentiles") +
-  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
-
-# Monthly trends in available area
-fig_3c <- PAR_kong_bottom |> 
-  filter(PARbottom >= 0.3) |> 
-  summarise(total_area = sum(area), .by = c("Years", "Months", "date")) |> 
-  ggplot(aes(x = date, y = total_area, colour = as.factor(Months))) +
-  geom_point() + geom_line() + geom_smooth(method = "lm") +
-  scale_colour_viridis_d(option = "F") +
-  labs(x = "Date", y = "Total area (km^2)", colour = "Month",
-       title = "Monthly bottom area receiving >= 0.3 mol m-2 d-1") +
-  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+# Kd
+fig_3c <- PAR_annual_summary |> 
+  filter(name == "YearlyPARbottom") |> 
+  left_join(long_site_names, by = "site") |> 
+  ggplot(aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = min, ymax = max, fill = site_long)) +
+  geom_ribbon(aes(ymin = q10, ymax = q90), colour = "grey", alpha = 0.2) +
+  geom_line(colour = "black") +
+  geom_line(aes(y = q50), colour = "grey") +
+  geom_point(colour = "black") +
+  geom_point(aes(y = q50), colour = "grey") +
+  facet_wrap(~site_long) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_manual("Site", values = site_colours) +
+  labs(x = NULL, y = "Annual average bottom PAR [mol m-2 d-1]", fill = "Site") +
+  theme(legend.position = "none",
+        # legend.position = c(0.14, 0.8), 
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_3c
 
 # Combine and save
-fig_3 <- ggpubr::ggarrange(fig_3a, fig_3b, fig_3c, align = "v", labels = c("A)", "B)", "C)"), ncol = 1, nrow = 3)  +
+fig_3 <- ggpubr::ggarrange(fig_3a, fig_3b, fig_3c, align = "v", 
+                           # common.legend = T, legend = "bottom",
+                           labels = c("A)", "B)", "C)"), ncol = 1, nrow = 3)  +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_3.png", height = 22, width = 12)
+ggsave(filename = "figures/fig_3.png", plot = fig_3, height = 22, width = 12)
+
+
+# Figure 4 ----------------------------------------------------------------
+# Ribbon plots showing change in bottom PAR per month over time
+
+# Bottom PAR
+fig_4 <- PAR_monthly_summary |> 
+  left_join(long_site_names, by = "site") |> 
+  ggplot(aes(x = year, y = mean)) +
+  # geom_ribbon(aes(ymin = min, ymax = max, fill = as.factor(month)), alpha = 0.2) +
+  geom_ribbon(aes(ymin = q10, ymax = q90, fill = as.factor(month)), alpha = 0.2) +
+  # geom_line(aes(colour = as.factor(month))) +
+  geom_line(aes(y = q50, colour = as.factor(month))) +
+  # geom_point(aes(colour = as.factor(month))) +
+  geom_point(aes(y = q50, colour = as.factor(month))) +
+  facet_wrap(~site_long, scales = "free_y") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_fill_viridis_d("Month", option = "A", aesthetics = c("colour", "fill")) +
+  labs(x = NULL, y = "Annual monthly bottom PAR [mol m-2 d-1]") +
+  theme(legend.position = c(0.65, 0.2), 
+        legend.direction = "horizontal",
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_4
+ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 8, width = 12)
+
+
+# Figure 5 ----------------------------------------------------------------
+# Changes to inhabitable area over time
+
+# Bottom PAR per month with per month trends
+fig_5a <- PAR_spatial_summary |> 
+  left_join(long_site_names, by = "site") |> 
+  mutate(date = as.Date(paste0(year,"-",month,"-01"))) |> 
+  ggplot(aes(x = date, y = monthly_area)) +
+  geom_line(aes(colour = site_long)) +
+  geom_point(aes(colour = site_long)) +
+  geom_smooth(aes(colour = site_long), method = "lm") +
+  facet_wrap(~site_long, scales = "free_y") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_colour_manual("Site", values = site_colours) +
+  labs(x = NULL, y = "Annual spatial availability [km^2]") +
+  theme(legend.position = "none",
+        # legend.position = c(0.65, 0.15), 
+        legend.margin = margin(5, 20, 5, 5),
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_5a
+
+# Bottom PAR per month with total trend
+fig_5b <- PAR_spatial_summary |> 
+  left_join(long_site_names, by = "site") |> 
+  ggplot(aes(x = year, y = monthly_area)) +
+  geom_line(aes(colour = as.factor(month))) +
+  geom_point(aes(colour = as.factor(month))) +
+  geom_smooth(aes(colour = as.factor(month)), method = "lm") +
+  facet_wrap(~site_long, scales = "free_y") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_colour_viridis_d("Month", option = "A") +
+  labs(x = NULL, y = "Monthly spatial availability [km^2]") +
+  theme(legend.position = c(0.65, 0.15),
+        legend.direction = "horizontal",
+        legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
+# fig_5b
+
+# Merge and save
+fig_5 <- ggpubr::ggarrange(fig_5a, fig_5b, align = "v", 
+                           labels = c("A)", "B)"), ncol = 1, nrow = 2)  +
+  ggpubr::bgcolor("white") + ggpubr::border("white")
+ggsave(filename = "figures/fig_5.png", plot = fig_5, height = 16, width = 12)
 
 
 # Figure S1 ---------------------------------------------------------------
