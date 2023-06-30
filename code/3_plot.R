@@ -511,6 +511,10 @@ fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPfunction)) +
 ggsave("figures/fig_S2.png", fig_S2, width = 8, height = 6)
 
 
+# Figure S3 ---------------------------------------------------------------
+# The monthly climatologies for surface PAR and Kd
+
+
 # Table 1 -----------------------------------------------------------------
 # Light requirements by species
 
