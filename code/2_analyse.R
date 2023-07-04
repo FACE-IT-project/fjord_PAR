@@ -134,6 +134,33 @@ PAR_spatial_summary <- rbind(PAR_kong_spatial_summary, PAR_is_spatial_summary, P
                              PAR_por_spatial_summary) |> dplyr::select(site, everything())
 save(PAR_spatial_summary, file = "data/PAR_spatial_summary.RData")
 
+# Explicitly call gaps in months
+PAR_spat_sum_complete <- PAR_spatial_summary |> 
+  mutate(date = as.Date(paste0(year,"-",month,"-01"))) |> 
+  group_by(site) |> 
+  tidyr::complete(date = seq(min(date), max(date), by = "month")) |> 
+  ungroup()
+
+# Calculate p-values of linear models on annual bottom PAR as a full time series
+PAR_lm_annual <- PAR_spatial_summary |> 
+  dplyr::select(site, year, annual_area) |>  distinct() |> 
+  dplyr::rename(t = year, value = annual_area) |> 
+  plyr::ddply(c("site"), lm_tidy, .parallel = T)
+save(PAR_lm_annual, file = "data/PAR_lm_annual.RData")
+
+# Calculate p-values of linear models on monthly bottom PAR as a full time series
+PAR_lm_annual_monthly <- PAR_spat_sum_complete |> 
+  dplyr::rename(t = date, value = monthly_area) |> 
+  plyr::ddply(c("site"), lm_tidy, .parallel = T)
+save(PAR_lm_annual_monthly, file = "data/PAR_lm_annual_monthly.RData")
+
+# Calculate p-values of linear models on monthly bottom PAR as a per month time series
+PAR_lm_monthl_monthly <- PAR_spat_sum_complete |>
+  filter(!is.na(month)) |> 
+  dplyr::rename(t = date, value = monthly_area) |> 
+  plyr::ddply(c("site", "month"), lm_tidy, .parallel = T)
+save(PAR_lm_monthl_monthly, file = "data/PAR_lm_monthl_monthly.RData")
+
 
 # p functions -------------------------------------------------------------
 

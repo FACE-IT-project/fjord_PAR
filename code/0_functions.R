@@ -225,7 +225,7 @@ PAR_summarise <- function(PAR_df){
 # Summarise the spatial area of pixels with a given PAR threshold
 # NB: depth_limit is only applied to global values
 # It is assumed that the depth limit was applied to the other layers upon loading
-PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.3, depth_limit = -50){
+PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.13, depth_limit = -50){
 
   # Global
   PAR_spat_global <- PAR_list$PAR_global |> 
