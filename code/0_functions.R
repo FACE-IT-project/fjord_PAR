@@ -281,7 +281,6 @@ points_in_region <- function(region_in, bbox_df, data_df){
 }
 
 # Convenience wrapper for Figure 1 subplots
-# TODO: Add 50 m isobath as a red line
 fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
   PAR_df <- PAR_df |> 
     mutate(GlobalPAR0m = case_when(GlobalPAR0m > max(PAR_limits) ~ max(PAR_limits),
@@ -289,9 +288,9 @@ fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
                                    TRUE ~ GlobalPAR0m))
   ggplot(data = PAR_df, aes(x = lon, y = lat)) +
     geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c(limits = PAR_limits) +
-    geom_contour(aes(z = depth), breaks = -50, colour = "red") +
+    # geom_contour(aes(z = depth), breaks = -50, colour = "red") +
     coord_quickmap(expand = FALSE) + 
-    labs(x = NULL, y = NULL, fill = "PAR\n[mol m-2 d-1]", title = site_name) +
+    labs(x = NULL, y = NULL, fill = "Surface PAR\n[mol m-2 d-1]", title = site_name) +
     theme(legend.position = "none", # Remove legend
           axis.text = element_blank(), axis.ticks = element_blank(), # Remove coords
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), # Remove axis lines

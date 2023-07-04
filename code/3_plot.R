@@ -232,7 +232,7 @@ PAR_legend <- filter(PAR_kong$PAR_global) %>%
   mutate(x = 1:n(), y = 1) %>% 
   ggplot() + geom_point(aes(x = x, y = y, colour = GlobalPAR0m)) +
   scale_colour_viridis_c(limits = PAR_quant) +
-  labs(colour = "PAR\n[mol m-2 d-1]") +
+  labs(colour = "Surface PAR\n[mol m-2 d-1]") +
   theme(legend.position = "right", 
         legend.key.height = unit(1, "cm"),
         legend.key.width = unit(1, "cm"),
