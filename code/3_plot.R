@@ -228,18 +228,18 @@ fig_1_nuup <- fig_1_subplot(PAR_nuup$PAR_global, "Nuup Kangerlua", PAR_quant)
 fig_1_por <- fig_1_subplot(PAR_por$PAR_global, "Porsangerfjorden", PAR_quant)
 
 # Get legend
-PAR_legend <- filter(PAR_kong$PAR_global) %>% 
+PAR_legend_base <- filter(PAR_kong$PAR_global) %>% 
   mutate(x = 1:n(), y = 1) %>% 
   ggplot() + geom_point(aes(x = x, y = y, colour = GlobalPAR0m)) +
   scale_colour_viridis_c(limits = PAR_quant) +
-  labs(colour = "PAR\n[mol m-2 d-1]") +
+  labs(colour = "Surface PAR\n[mol m-2 d-1]") +
   theme(legend.position = "right", 
         legend.key.height = unit(1, "cm"),
         legend.key.width = unit(1, "cm"),
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14),
         legend.box.background = element_rect(fill = NA, colour = NA))
-PAR_legend <- ggpubr::get_legend(PAR_legend)
+PAR_legend <- ggpubr::get_legend(PAR_legend_base)
 
 # Combine and save
 fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, PAR_legend,
@@ -326,7 +326,7 @@ fig_3b <- PAR_annual_summary |>
   facet_wrap(~site_long) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours) +
-  labs(x = NULL, y = "Kd", fill = "Site") +
+  labs(x = NULL, y = "Annual average Kd", fill = "Site") +
   theme(legend.position = "none",
         # legend.position = c(0.14, 0.8), 
         legend.title = element_text(colour = "black", size = 12),
@@ -367,7 +367,7 @@ fig_3 <- ggpubr::ggarrange(fig_3a, fig_3b, fig_3c, align = "v",
                            # common.legend = T, legend = "bottom",
                            labels = c("A)", "B)", "C)"), ncol = 1, nrow = 3)  +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave(filename = "figures/fig_3.png", plot = fig_3, height = 22, width = 12)
+ggsave(filename = "figures/fig_3.png", plot = fig_3, height = 16, width = 10)
 
 
 # Figure 4 ----------------------------------------------------------------
@@ -386,7 +386,7 @@ fig_4 <- PAR_monthly_summary |>
   facet_wrap(~site_long, scales = "free_y") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_viridis_d("Month", option = "A", aesthetics = c("colour", "fill")) +
-  labs(x = NULL, y = "Annual monthly bottom PAR [mol m-2 d-1]") +
+  labs(x = NULL, y = "Monthly average bottom PAR [mol m-2 d-1]") +
   theme(legend.position = c(0.65, 0.2), 
         legend.direction = "horizontal",
         legend.title = element_text(colour = "black", size = 12),
@@ -396,24 +396,38 @@ fig_4 <- PAR_monthly_summary |>
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
 # fig_4
-ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 8, width = 12)
+ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 8, width = 10)
 
 
 # Figure 5 ----------------------------------------------------------------
 # Changes to inhabitable area over time
 
-# Bottom PAR per month with per month trends
-fig_5a <- PAR_spatial_summary |> 
+# Prep data for plotting
+PAR_spat_sum_comp <- PAR_spatial_summary |> 
   left_join(long_site_names, by = "site") |> 
   mutate(date = as.Date(paste0(year,"-",month,"-01"))) |> 
+  group_by(site, site_long) |> 
+  tidyr::complete(date = seq(min(date), max(date), by = "month")) |> 
+  ungroup()
+PAR_spat_sum_comp_ann <- PAR_spat_sum_comp |> 
+  dplyr::select(site_long, year, annual_area) |> 
+  filter(!is.na(year)) |> distinct() |> 
+  mutate(date = as.Date(paste0(year,"-03-01")))
+
+# Bottom PAR per month with per month trends
+fig_5a <- PAR_spat_sum_comp |> 
   ggplot(aes(x = date, y = monthly_area)) +
   geom_line(aes(colour = site_long)) +
   geom_point(aes(colour = site_long)) +
   geom_smooth(aes(colour = site_long), method = "lm") +
+  geom_point(data = PAR_spat_sum_comp_ann, 
+             aes(y = annual_area), size = 3) +
+  geom_smooth(data = PAR_spat_sum_comp_ann,
+              aes(y = annual_area), colour = "black", method = "lm") +
   facet_wrap(~site_long, scales = "free_y") +
-  scale_x_continuous(expand = c(0, 0)) +
+  scale_x_date(expand = c(0, 0)) +
   scale_colour_manual("Site", values = site_colours) +
-  labs(x = NULL, y = "Annual spatial availability [km^2]") +
+  labs(x = NULL, y = "Spatial availability [km^2]") +
   theme(legend.position = "none",
         # legend.position = c(0.65, 0.15), 
         legend.margin = margin(5, 20, 5, 5),
@@ -435,7 +449,7 @@ fig_5b <- PAR_spatial_summary |>
   facet_wrap(~site_long, scales = "free_y") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_colour_viridis_d("Month", option = "A") +
-  labs(x = NULL, y = "Monthly spatial availability [km^2]") +
+  labs(x = NULL, y = "Spatial availability [km^2]") +
   theme(legend.position = c(0.65, 0.15),
         legend.direction = "horizontal",
         legend.title = element_text(colour = "black", size = 12),
@@ -450,7 +464,7 @@ fig_5b <- PAR_spatial_summary |>
 fig_5 <- ggpubr::ggarrange(fig_5a, fig_5b, align = "v", 
                            labels = c("A)", "B)"), ncol = 1, nrow = 2)  +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave(filename = "figures/fig_5.png", plot = fig_5, height = 16, width = 12)
+ggsave(filename = "figures/fig_5.png", plot = fig_5, height = 12, width = 10)
 
 
 # Figure S1 ---------------------------------------------------------------
