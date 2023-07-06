@@ -83,9 +83,6 @@ kong_kd_global_plot <- ggplot(data = filter(PAR_kong_global, depth >= -200), aes
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_kd_global.png", kong_kd_global_plot, width = 8, height = 8)
 
-# Global monthly surface
-# I don't think this is of interest
-
 # Global monthly bottom
 kong_bottom_global_monthly_plot <- ggplot(data = filter(PAR_kong_global_monthly, depth >= -200), aes(x = lon, y = lat)) +
   geom_raster(aes(fill = MonthlyPARbottom)) + geom_contour(aes(z = MonthlyPARbottom), breaks = 0.3, colour = "red") +
@@ -121,7 +118,7 @@ kong_bottom_monthly_trend_plot <- ggplot(data = filter(PAR_kong_bottom_lm, depth
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 ggsave("figures/kong_bottom_monthly_trend.png", kong_bottom_monthly_trend_plot, width = 14, height = 8)
 
-# Bottom that receives 12.5 PAR
+# Bottom that receives 0.3 PAR
 kong_bottom_monthly_area_plot <- PAR_kong_bottom |> 
   filter(PARbottom >= 0.3) |> 
   mutate(date = as.Date(paste0(Years,"-",Months,"-01"))) |> 
@@ -159,6 +156,8 @@ ggsave("figures/kong_p_yearly.png", kong_p_yearly_plot, width = 8, height = 8)
 kong_p_plot <- ggpubr::ggarrange(kong_p_monthly_plot, kong_p_yearly_plot, 
                                  ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv")
 ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
+
+# Create a global surface plot with full range to highlight artefacts
 
 
 # Figure 1 ----------------------------------------------------------------
