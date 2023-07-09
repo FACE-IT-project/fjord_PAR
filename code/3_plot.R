@@ -158,9 +158,7 @@ kong_p_plot <- ggpubr::ggarrange(kong_p_monthly_plot, kong_p_yearly_plot,
 ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
 
 # Create plots that help investigate artefacts
-plot_surface(PAR_kong, "kong"); plot_surface(PAR_is, "is"); plot_surface(PAR_stor, "stor")
-plot_surface(PAR_young, "young"); plot_surface(PAR_disko, "disko"); plot_surface(PAR_nuup, "nuup")
-plot_surface(PAR_por, "por")
+plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 
 
 # Figure 1 ----------------------------------------------------------------

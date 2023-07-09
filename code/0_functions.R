@@ -284,14 +284,18 @@ points_in_region <- function(region_in, bbox_df, data_df){
 plot_surface <- function(site_short){
   
   # Load all data except monthly bottom PAR
+  file_name <- paste0("data/PAR/",site_short,".nc")
   PAR_list <- fl_LoadFjord(site_short, "data/PAR")
   
   # Get long site name
-  Site_label <- filter(long_site_names, site == site_short)
+  # site_label <- filter(long_site_names, site == site_short)
   
   # Get bathymetry
+  PAR_area <- flget_area(PAR_list, mode = "3col") |> 
+    dplyr::rename(lon = longitude, lat = latitude, area = PixArea_km2)
   PAR_bathy <- flget_bathymetry(PAR_list, what = "s", mode = "3col") |> 
-    dplyr::rename(lon = longitude, lat = latitude) |> filter(!is.na(depth))
+    dplyr::rename(lon = longitude, lat = latitude) |> filter(!is.na(depth)) |> 
+    left_join(PAR_area, by = c("lon", "lat"))
   
   # Global surface
   PAR_global <- flget_climatology(PAR_list, optics = "PAR0m", period = "Global", mode = "3col") |> 
@@ -303,29 +307,29 @@ plot_surface <- function(site_short){
     theme(panel.border = element_rect(color = "black", fill = NA))
   
   # Monthly clim surface
-  PAR_clim <- plyr::ldply(3:10, flget_climatology, .parallel = T,
-                          fjord = PAR_list, optics = "PAR0m", period = "Monthly", month = 3:10, mode = "3col") |> 
-    dplyr::rename(lon = longitude, lat = latitude) |> filter(!is.na(PAR0m_Monthly))
-  surf_clim <- ggplot(data = PAR_list$PAR_clim, aes(x = lon, y = lat)) +
+  PAR_MonthlyPAR0m <- filter_3D_cube("MonthlyPAR0m", file_name, PAR_bathy)
+  surf_clim <- ggplot(data = PAR_MonthlyPAR0m, aes(x = lon, y = lat)) +
     geom_raster(aes(fill = MonthlyPAR0m)) + scale_fill_viridis_c() +
     coord_quickmap(expand = FALSE) + 
     labs(x = NULL, y = NULL, fill = "PAR\n[mol m-2 d-1]", title = "Monthly Clim Surface PAR") +
-    facet_wrap(~month) +
+    facet_wrap(~date) +
     theme(panel.border = element_rect(color = "black", fill = NA))
   
   # Annual surface
-  surf_ann <- ggplot(data = PAR_list$PAR_annual, aes(x = lon, y = lat)) +
+  PAR_YearlyPAR0m <- filter_3D_cube("YearlyPAR0m", file_name, PAR_bathy)
+  surf_ann <- ggplot(data = PAR_YearlyPAR0m, aes(x = lon, y = lat)) +
     geom_raster(aes(fill = YearlyPAR0m)) + scale_fill_viridis_c() +
     coord_quickmap(expand = FALSE) + 
     labs(x = NULL, y = NULL, fill = "PAR\n[mol m-2 d-1]", title = "Annual Surface PAR") +
-    facet_wrap(~year) +
+    facet_wrap(~date) +
     theme(panel.border = element_rect(color = "black", fill = NA))
   
   # Combine and save
   surf_ALL <- ggpubr::ggarrange(surf_global, surf_clim, surf_ann,
                                 ncol = 1, nrow = 3, heights = c(1.1, 1.17, 0.97))
   ggsave(paste0("metadata/surface_PAR_", site_short,".png"), surf_ALL,  width = 17, height = 40)
-  # rm(PAR_list, site_short, surf_global, surf_clim, surf_ann, surf_ALL)
+  # rm(site_short, file_name, PAR_list, PAR_area, PAR_bathy,
+  #    PAR_global, PAR_MonthlyPAR0m, PAR_YearlyPAR0m, surf_global, surf_clim, surf_ann, surf_ALL)
 }
 
 # Convenience wrapper for Figure 1 subplots
