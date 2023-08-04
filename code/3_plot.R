@@ -8,12 +8,22 @@
 # Load functions and packages
 source("code/0_functions.R")
 library(ggOceanMaps)
+library(ggspatial)
 
 # Load processed data from '2_analyse.R'
 load("data/PAR_annual_summary.RData")
 load("data/PAR_clim_summary.RData")
 load("data/PAR_monthly_summary.RData")
 load("data/PAR_spatial_summary.RData")
+
+# Load base data
+PAR_kong <- fl_LoadFjord("kong", "data/PAR")
+PAR_is <- fl_LoadFjord("is", "data/PAR")
+PAR_stor <- fl_LoadFjord("stor", "data/PAR")
+PAR_young <- fl_LoadFjord("young", "data/PAR")
+PAR_disko <- fl_LoadFjord("disko", "data/PAR")
+PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
+PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 
 # Prep --------------------------------------------------------------------
@@ -166,17 +176,23 @@ plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 
 
 # Figure 1 ----------------------------------------------------------------
-# Map of the study area + seven sites showing PAR in some way
-# Probably global average surface values
+# Map of the study area + seven sites showing global surface PAR
+
+# Extract global surface values
+PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_is <- flget_climatology(PAR_is, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_stor <- flget_climatology(PAR_stor, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_young <- flget_climatology(PAR_young, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_disko <- flget_climatology(PAR_disko, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_nuup <- flget_climatology(PAR_nuup, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_por <- flget_climatology(PAR_por, optics = "PAR0m", period = "Global", mode = "3col")
 
 # Range of surface PAR values
-PAR_global_surface <- c(PAR_kong$PAR_global$GlobalPAR0m, PAR_is$PAR_global$GlobalPAR0m,
-                        PAR_stor$PAR_global$GlobalPAR0m, PAR_young$PAR_global$GlobalPAR0m,
-                        PAR_disko$PAR_global$GlobalPAR0m, PAR_nuup$PAR_global$GlobalPAR0m,
-                        PAR_por$PAR_global$GlobalPAR0m)
-PAR_range <- range(PAR_global_surface, na.rm = T)
-PAR_quant <- c(quantile(PAR_global_surface, 0.01, na.rm = T),
-               quantile(PAR_global_surface, 0.99, na.rm = T))
+PAR_global <- c(PAR_global_kong, PAR_global_is, PAR_global_stor, 
+                PAR_global_young, PAR_global_disko, PAR_global_nuup, PAR_global_por)
+PAR_range <- range(PAR_global$PAR0m_Global, na.rm = T)
+PAR_quant <- c(quantile(PAR_global$PAR0m_Global, 0.01, na.rm = T),
+               quantile(PAR_global$PAR0m_Global, 0.99, na.rm = T))
 
 # Study sites
 site_points <- data.frame(site = factor(x = c("Kongsfjorden", "Isfjorden", "Storfjorden", 
@@ -185,14 +201,15 @@ site_points <- data.frame(site = factor(x = c("Kongsfjorden", "Isfjorden", "Stor
                                         levels = c("Kongsfjorden", "Isfjorden","Storfjorden", 
                                                    "Young Sound", "Qeqertarsuup Tunua", "Nuup Kangerlua", 
                                                    "Porsangerfjorden")),
+                          label = c("B)", "C)", "D)", "E)", "F)", "G)", "H)"),
                           lon = c(11.845, 14.365, 19.88, -21.237, -52.555, -50.625, 25.75),
                           lat = c(78.98, 78.235, 77.78, 74.517, 69.36, 64.405, 70.6))
 
 # Full study area
 fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
   # Other labels
-  geom_spatial_label(aes(x = 0, y = 78, label = "Fram\nStrait"), 
-                     colour = "black", crs = 4326, size = 4, alpha = 0.5) +
+  # geom_spatial_label(aes(x = 0, y = 78, label = "Fram\nStrait"), 
+  #                    colour = "black", crs = 4326, size = 4, alpha = 0.5) +
   geom_spatial_label(aes(x = 27, y = 79, label = "Svalbard"), 
                      colour = "black", crs = 4326, size = 4, alpha = 0.5) +
   geom_spatial_label(aes(x = 40, y = 74, label = "Barents Sea"), 
@@ -210,35 +227,38 @@ fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
                      aes(x = lon, y = lat), colour = "black") +
   geom_spatial_point(data = site_points, size = 5, crs = 4326,
                      aes(x = lon, y = lat, colour = site)) +
+  # geom_spatial_text(data = site_points, size = 5, crs = 4326,
+  #                    aes(x = lon, y = lat, label = label)) +
   scale_colour_manual("Site", values = site_colours) +
   # Other minutia
   labs(x = NULL, y = NULL) +
+  guides(colour = "none") + 
   theme(panel.border = element_rect(colour = "black", fill = NA),
         panel.background = element_rect(fill = NA, colour = "black"),
         plot.background = element_rect(fill = "white", colour = NA),
         axis.text = element_text(colour = "black", size = 10),
-        legend.position = c(0.925, 0.31),
+        legend.position = c(0.93, 0.21),
         legend.box.margin = margin(10, 10, 10, 10), 
         legend.box.background = element_rect(fill = "white", colour = "black"))
 # fig_1_base
 
 # Add Surface PAR site panels
-fig_1_kong <- fig_1_subplot(PAR_kong$PAR_global, "Kongsfjorden", PAR_quant)
-fig_1_is <- fig_1_subplot(PAR_is$PAR_global, "Isfjorden", PAR_quant)
-fig_1_stor <- fig_1_subplot(PAR_stor$PAR_global, "Storfjorden", PAR_quant)
-fig_1_young <- fig_1_subplot(PAR_young$PAR_global, "Young Sound", PAR_quant)
-fig_1_disko <- fig_1_subplot(PAR_disko$PAR_global, "Qeqertarsuup Tunua", PAR_quant)
-fig_1_nuup <- fig_1_subplot(PAR_nuup$PAR_global, "Nuup Kangerlua", PAR_quant)
-fig_1_por <- fig_1_subplot(PAR_por$PAR_global, "Porsangerfjorden", PAR_quant)
+fig_1_kong <- fig_1_subplot(PAR_global_kong, "Kongsfjorden", PAR_quant)
+fig_1_is <- fig_1_subplot(PAR_global_is, "Isfjorden", PAR_quant)
+fig_1_stor <- fig_1_subplot(PAR_global_stor, "Storfjorden", PAR_quant)
+fig_1_young <- fig_1_subplot(PAR_global_young, "Young Sound", PAR_quant)
+fig_1_disko <- fig_1_subplot(PAR_global_disko, "Qeqertarsuup Tunua", PAR_quant)
+fig_1_nuup <- fig_1_subplot(PAR_global_nuup, "Nuup Kangerlua", PAR_quant)
+fig_1_por <- fig_1_subplot(PAR_global_por, "Porsangerfjorden", PAR_quant)
 
 # Get legend
-PAR_legend_base <- filter(PAR_kong$PAR_global) %>% 
+PAR_legend_base <- PAR_global_kong %>% 
   mutate(x = 1:n(), y = 1) %>% 
-  ggplot() + geom_point(aes(x = x, y = y, colour = GlobalPAR0m)) +
+  ggplot() + geom_point(aes(x = x, y = y, colour = PAR0m_Global)) +
   scale_colour_viridis_c(limits = PAR_quant) +
   labs(colour = "Surface PAR\n[mol m-2 d-1]") +
   theme(legend.position = "right", 
-        legend.key.height = unit(1, "cm"),
+        legend.key.height = unit(0.8, "cm"),
         legend.key.width = unit(1, "cm"),
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14),
@@ -251,10 +271,10 @@ fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, PAR_legend,
                                  ncol = 4, nrow = 2, align = "hv")#, 
                                  # labels = c("B)", "C)", "D)", "E)", "F)", "G)", "H)", ""))
 fig_1 <- ggpubr::ggarrange(fig_1_base, fig_1_sites, 
-                           # labels = c("A)", ""), 
+                           labels = c("A)", ""),
                            ncol = 1, nrow = 2, heights = c(1, 0.7)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_1.png", fig_1, height = 14, width = 12)
+ggsave("figures/fig_1.png", fig_1, height = 12, width = 10)
 
 
 # Figure 2 ----------------------------------------------------------------

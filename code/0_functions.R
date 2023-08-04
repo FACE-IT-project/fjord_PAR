@@ -9,6 +9,7 @@
 # devtools::install_github("FACE-IT-project/FjordLight")
 library(tidyverse)
 library(tidync)
+library(raster)
 library(FjordLight)
 library(doParallel); registerDoParallel(cores = 15)
 
@@ -47,6 +48,17 @@ site_colours <- c(
   "Qeqertarsuup Tunua" = "springgreen3", 
   "Nuup Kangerlua" = "springgreen1", 
   "Porsangerfjorden" = "plum4"
+)
+
+# Colour palette for sites
+site_letters <- c(
+  "Kongsfjorden" = "B)", 
+  "Isfjorden" = "C)", 
+  "Storfjorden" = "D)", 
+  "Young Sound" = "E)", 
+  "Qeqertarsuup Tunua" = "F)", 
+  "Nuup Kangerlua" = "G)", 
+  "Porsangerfjorden" = "H)"
 )
 
 # Long names for merging
@@ -334,16 +346,23 @@ plot_surface <- function(site_short){
 
 # Convenience wrapper for Figure 1 subplots
 fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
+  # Prep data
   PAR_df <- PAR_df |> 
-    mutate(GlobalPAR0m = case_when(GlobalPAR0m > max(PAR_limits) ~ max(PAR_limits),
-                                   GlobalPAR0m < min(PAR_limits) ~ min(PAR_limits),
-                                   TRUE ~ GlobalPAR0m))
-  ggplot(data = PAR_df, aes(x = lon, y = lat)) +
-    geom_raster(aes(fill = GlobalPAR0m)) + scale_fill_viridis_c(limits = PAR_limits) +
+    filter(!is.na(PAR0m_Global)) |> 
+    mutate(PAR0m_Global = case_when(PAR0m_Global > max(PAR_limits) ~ max(PAR_limits),
+                                    PAR0m_Global < min(PAR_limits) ~ min(PAR_limits),
+                                    TRUE ~ PAR0m_Global))
+  # Get title
+  panel_title <- paste0(site_letters[site_name]," ",site_name)
+  
+  ggplot(data = PAR_df, aes(x = longitude, y = latitude)) +
+    # NB: Ignore geom_raster warning because geom_tile looks bad
+    geom_raster(aes(fill = PAR0m_Global)) + scale_fill_viridis_c(limits = PAR_limits) +
     coord_quickmap(expand = FALSE) + 
-    labs(x = NULL, y = NULL, fill = "Surface PAR\n[mol m-2 d-1]", title = site_name) +
+    labs(x = NULL, y = NULL, fill = "Surface PAR\n[mol m-2 d-1]", title = panel_title) +
     theme(legend.position = "none", # Remove legend
           axis.text = element_blank(), axis.ticks = element_blank(), # Remove coords
+          panel.background = element_rect(fill = "grey40"), # Background colour
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), # Remove axis lines
-          panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 3))
+          panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 5))
 }
