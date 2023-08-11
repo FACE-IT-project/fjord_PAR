@@ -206,6 +206,7 @@ site_points <- data.frame(site = factor(x = c("Kongsfjorden", "Isfjorden", "Stor
                           lat = c(78.98, 78.235, 77.78, 74.517, 69.36, 64.405, 70.6))
 
 # Full study area
+# TODO: Fix bathymetry legend spacing once final shape has been established
 fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
   # Other labels
   geom_spatial_label(aes(x = 27, y = 79, label = "Svalbard"), 
@@ -248,28 +249,37 @@ fig_1_nuup <- fig_1_subplot(PAR_global_nuup, "Nuup Kangerlua", PAR_quant)
 fig_1_por <- fig_1_subplot(PAR_global_por, "Porsangerfjorden", PAR_quant)
 
 # Get legend
+# TODO: Get line break to work correctly
 PAR_legend_base <- PAR_global_kong %>% 
   mutate(x = 1:n(), y = 1) %>% 
   ggplot() + geom_point(aes(x = x, y = y, colour = PAR0m_Global)) +
-  scale_colour_viridis_c(limits = PAR_quant) +
-  labs(colour = "Surface PAR\n[mol m-2 d-1]") +
-  theme(legend.position = "right", 
+  scale_colour_viridis_c(limits = PAR_quant,
+                         guide = guide_colorbar(
+                           direction = "horizontal",
+                           title.position = "top")) +
+  # labs(colour = expression(atop(PAR(0^"-"), [mol~photons~m]))) +
+  labs(colour = latex2exp::TeX("PAR(0$^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
+  theme(legend.title.align = 0.5,
         legend.key.height = unit(0.8, "cm"),
-        legend.key.width = unit(1, "cm"),
+        legend.key.width = unit(2, "cm"),
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14),
         legend.box.background = element_rect(fill = NA, colour = NA))
+PAR_legend_base
 PAR_legend <- ggpubr::get_legend(PAR_legend_base)
 
+# Placeholder
+blank_plot <- ggplot() + geom_blank() + theme_void()
+
 # Combine and save
-fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, PAR_legend,
+fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, blank_plot,
                                  fig_1_young, fig_1_disko, fig_1_nuup, fig_1_por,
-                                 ncol = 4, nrow = 2, align = "hv")
-fig_1 <- ggpubr::ggarrange(fig_1_base, fig_1_sites, 
-                           labels = c("A)", ""),
-                           ncol = 1, nrow = 2, heights = c(1, 0.7)) +
+                                 ncol = 4, nrow = 2)
+fig_1 <- ggpubr::ggarrange(fig_1_base, PAR_legend, fig_1_sites, 
+                           labels = c("A)", "", ""),
+                           ncol = 1, nrow = 3, heights = c(1.0, 0.2, 0.7)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_1.png", fig_1, height = 12, width = 10)
+ggsave("figures/fig_1.png", fig_1, height = 13, width = 10)
 
 
 # Figure 2 ----------------------------------------------------------------
@@ -321,27 +331,19 @@ ggsave("figures/fig_2.png", fig_2, height = 6, width = 8)
 
 # Surface
 # TODO: Put p-values of slopes on figures as labels?
-# TODO: Get legend text to not overplot itself
+# TODO: Get legend text to not over plot itself
 fig_3a <- PAR_annual_summary |> 
   filter(name == "YearlyPAR0m") |> 
   left_join(long_site_names, by = "site") |> 
-  ggplot(aes(x = year, y = mean)) +
-  # geom_ribbon(aes(ymin = min, ymax = max, fill = site_long)) +
-  # geom_ribbon(aes(ymin = q10, ymax = q90), colour = "grey", alpha = 0.2) +
-  # geom_line(colour = "black") +
-  # geom_line(aes(y = q50), colour = "grey") +
-  # geom_point(colour = "black") +
-  # geom_point(aes(y = q50), colour = "grey") +
-  # facet_wrap(~site_long) +
+  ggplot(aes(x = year, y = q50)) +
   geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
-  # geom_point(aes(fill = site_long), size = 5, shape = 21, colour = "black") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL, y = "Surface PAR [mol m-2 d-1]", fill = "Site") +
-  theme(#legend.position = "none",
-        # legend.position = c(0.7, 0.2), 
-        legend.title = element_text(colour = "black", size = 12),
+  labs(x = NULL, 
+       y = latex2exp::TeX("PAR($0^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
+  theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
         legend.box.margin = margin(2,15,2,2),
@@ -354,23 +356,15 @@ fig_3a <- PAR_annual_summary |>
 fig_3b <- PAR_annual_summary |> 
   filter(name == "Yearlykdpar") |> 
   left_join(long_site_names, by = "site") |> 
-  ggplot(aes(x = year, y = mean)) +
-  # geom_ribbon(aes(ymin = min, ymax = max, fill = site_long)) +
-  # geom_ribbon(aes(ymin = q10, ymax = q90), colour = "grey", alpha = 0.2) +
-  # geom_line(colour = "black") +
-  # geom_line(aes(y = q50), colour = "grey") +
-  # geom_point(colour = "black") +
-  # geom_point(aes(y = q50), colour = "grey") +
-  # facet_wrap(~site_long) +
+  ggplot(aes(x = year, y = q50)) +
   geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
-  # geom_point(aes(fill = site_long), size = 5, shape = 21, colour = "black") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL, y = "K_par", fill = "Site") +
-  theme(#legend.position = "none",
-        # legend.position = c(0.14, 0.8), 
-        legend.title = element_text(colour = "black", size = 12),
+  labs(x = NULL,
+       y = latex2exp::TeX("K$_{PAR}$")) +
+  theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
         axis.text = element_text(colour = "black", size = 10),
@@ -382,23 +376,15 @@ fig_3b <- PAR_annual_summary |>
 fig_3c <- PAR_annual_summary |> 
   filter(name == "YearlyPARbottom") |> 
   left_join(long_site_names, by = "site") |> 
-  ggplot(aes(x = year, y = mean)) +
-  # geom_ribbon(aes(ymin = min, ymax = max, fill = site_long)) +
-  # geom_ribbon(aes(ymin = q10, ymax = q90), colour = "grey", alpha = 0.2) +
-  # geom_line(colour = "black") +
-  # geom_line(aes(y = q50), colour = "grey") +
-  # geom_point(colour = "black") +
-  # geom_point(aes(y = q50), colour = "grey") +
-  # facet_wrap(~site_long) +
+  ggplot(aes(x = year, y = q50)) +
   geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
-  # geom_point(aes(fill = site_long), size = 5, shape = 21, colour = "black") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL, y = "Bottom PAR [mol m-2 d-1]", fill = "Site") +
-  theme(#legend.position = "none",
-        # legend.position = c(0.14, 0.8), 
-        legend.title = element_text(colour = "black", size = 12),
+  labs(x = NULL,
+       y = latex2exp::TeX("PAR$_B$ [mol photons $m^{-2}$ d$^{-1}$]")) +
+  theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
         axis.text = element_text(colour = "black", size = 10),
@@ -424,23 +410,20 @@ fig_4a <- PAR_clim_summary |>
   filter(name == "MonthlyPAR0m") |> 
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = month, y = q50)) +
-  # geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
-  # geom_point(aes(fill = site_long), size = 5, shape = 21, colour = "black") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  # scale_colour_viridis_d(option = "A") +
-  # facet_wrap(~site, nrow = 3, ncol = 3) +
-  labs(x = NULL, y = "Surface PAR [mol m-2 d-1]", fill = "Month") +
-  theme(#legend.position = "none",
-    # legend.position = c(0.7, 0.2), 
-    legend.title = element_text(colour = "black", size = 12),
-    legend.text = element_text(colour = "black", size = 10),
-    legend.box.background = element_rect(colour = "black", fill = "white"),
-    legend.box.margin = margin(2,15,2,2),
-    axis.text = element_text(colour = "black", size = 10),
-    axis.title = element_text(colour = "black", size = 12),
-    panel.border = element_rect(colour = "black", fill  = NA))
+  labs(x = NULL,
+       y = latex2exp::TeX("PAR($0^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
+  theme(legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        legend.box.margin = margin(2,15,2,2),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        plot.margin = margin(5, 20, 10, 5),
+        panel.border = element_rect(colour = "black", fill  = NA))
 # fig_4a
 
 # Kd
@@ -448,24 +431,19 @@ fig_4b <- PAR_clim_summary |>
   filter(name == "Monthlykdpar") |> 
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = month, y = q50)) +
-  # geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
-  geom_line(aes(group = site_long), colour = "black", linewidth = 1.5) +
-  geom_line(aes(colour = site_long), linewidth = 1.0) +
-  # geom_point(aes(fill = site_long), size = 5, shape = 21, colour = "black") +
+  geom_line(aes(group = site_long), linewidth = 1.7) +
+  geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  # scale_colour_viridis_d(option = "A") +
-  # facet_wrap(~site, nrow = 3, ncol = 3) +
-  labs(x = NULL, y = "K_PAR", fill = "Month") +
-  theme(#legend.position = "none",
-    # legend.position = c(0.7, 0.2), 
-    legend.title = element_text(colour = "black", size = 12),
-    legend.text = element_text(colour = "black", size = 10),
-    legend.box.background = element_rect(colour = "black", fill = "white"),
-    legend.box.margin = margin(2,15,2,2),
-    axis.text = element_text(colour = "black", size = 10),
-    axis.title = element_text(colour = "black", size = 12),
-    panel.border = element_rect(colour = "black", fill  = NA))
+  labs(x = NULL,
+       y = latex2exp::TeX("K$_{PAR}$")) +
+  theme(legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        legend.box.margin = margin(2,15,2,2),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
 # fig_4b
 
 # Bottom
@@ -473,28 +451,23 @@ fig_4c <- PAR_clim_summary |>
   filter(name == "MonthlyPARbottom") |> 
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = month, y = q50)) +
-  # geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
-  geom_line(aes(group = site_long), colour = "black", linewidth = 1.5) +
-  geom_line(aes(colour = site_long), linewidth = 1.0) +
-  # geom_point(aes(fill = site_long), size = 5, shape = 21, colour = "black") +
+  geom_line(aes(group = site_long), linewidth = 1.7) +
+  geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  # scale_colour_viridis_d(option = "A") +
-  # facet_wrap(~site, nrow = 3, ncol = 3) +
-  labs(x = NULL, y = "Bottom PAR [mol m-2 d-1]", fill = "Month") +
-  theme(#legend.position = "none",
-    # legend.position = c(0.7, 0.2), 
-    legend.title = element_text(colour = "black", size = 12),
-    legend.text = element_text(colour = "black", size = 10),
-    legend.box.background = element_rect(colour = "black", fill = "white"),
-    legend.box.margin = margin(2,15,2,2),
-    axis.text = element_text(colour = "black", size = 10),
-    axis.title = element_text(colour = "black", size = 12),
-    panel.border = element_rect(colour = "black", fill  = NA))
+  labs(x = NULL, 
+       y = latex2exp::TeX("PAR$_B$ [mol photons $m^{-2}$ d$^{-1}$]")) +
+  theme(legend.title = element_text(colour = "black", size = 12),
+        legend.text = element_text(colour = "black", size = 10),
+        legend.box.background = element_rect(colour = "black", fill = "white"),
+        legend.box.margin = margin(2,15,2,2),
+        axis.text = element_text(colour = "black", size = 10),
+        axis.title = element_text(colour = "black", size = 12),
+        panel.border = element_rect(colour = "black", fill  = NA))
 # fig_4c
 
 # Combine and save
-fig_4 <- ggpubr::ggarrange(fig_4a, fig_4b, fig_4c, align = "v", 
+fig_4 <- ggpubr::ggarrange(fig_4a, fig_4b, fig_4c, align = "hv", 
                             common.legend = T, legend = "bottom",
                             labels = c("A)", "B)", "C)"), ncol = 1, nrow = 3)
 fig_4 <- ggpubr::annotate_figure(fig_4, top = ggpubr::text_grob("Monthly climatology values per site", 
@@ -509,20 +482,14 @@ ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 12, width = 8)
 # Bottom PAR
 fig_5 <- PAR_monthly_summary |> 
   left_join(long_site_names, by = "site") |> 
-  ggplot(aes(x = year, y = mean)) +
-  # geom_ribbon(aes(ymin = min, ymax = max, fill = as.factor(month)), alpha = 0.2) +
-  # geom_ribbon(aes(ymin = q10, ymax = q90, fill = as.factor(month)), alpha = 0.2) +
-  # geom_line(aes(colour = as.factor(month))) +
-  # geom_line(aes(y = q50, colour = as.factor(month))) +
-  # geom_point(aes(colour = as.factor(month))) +
-  # geom_point(aes(y = q50, colour = as.factor(month))) +
+  ggplot(aes(x = year, y = q50)) +
   geom_smooth(aes(colour = as.factor(month)), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_line(aes(group = as.factor(month)), linewidth = 1.5) +
   geom_line(aes(colour = as.factor(month)), linewidth = 1.0) +
-  # geom_point(aes(fill = as.factor(month)), size = 2, shape = 21, colour = "black") +
   facet_wrap(~site_long, scales = "free_y") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_viridis_d("Month", option = "A", aesthetics = c("colour", "fill")) +
-  labs(x = NULL, y = "Bottom PAR [mol m-2 d-1]") +
+  labs(x = NULL, y = latex2exp::TeX("PAR$_B$ [mol photons $m^{-2}$ d$^{-1}$]")) +
   theme(legend.position = c(0.65, 0.17), 
         legend.direction = "horizontal",
         legend.title = element_text(colour = "black", size = 12),
@@ -568,9 +535,8 @@ fig_6a <- PAR_spat_sum_comp |>
   facet_wrap(~site_long, scales = "free_y") +
   scale_x_date(expand = c(0, 0)) +
   scale_colour_manual("Site", values = site_colours) +
-  labs(x = NULL, y = "Spatial availability [km^2]") +
+  labs(x = NULL, y = latex2exp::TeX("Spatial availability [km$^2$]")) +
   theme(legend.position = "none",
-        # legend.position = c(0.65, 0.15), 
         legend.margin = margin(5, 20, 5, 5),
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
@@ -590,7 +556,7 @@ fig_6b <- PAR_spatial_summary |>
   facet_wrap(~site_long, scales = "free_y") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_colour_viridis_d("Month", option = "A") +
-  labs(x = NULL, y = "Spatial availability [km^2]") +
+  labs(x = NULL, y = latex2exp::TeX("Spatial availability [km$^2$]")) +
   theme(legend.position = c(0.65, 0.15),
         legend.direction = "horizontal",
         legend.title = element_text(colour = "black", size = 12),
