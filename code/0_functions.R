@@ -41,13 +41,13 @@ bbox_ALL_df <- rbind(bbox_kong_df, bbox_is_df, bbox_stor_df,
 
 # Colour palette for sites
 site_colours <- c(
-  "Kongsfjorden" = "chocolate4", 
-  "Isfjorden" = "chocolate3", 
-  "Storfjorden" = "chocolate1", 
-  "Young Sound" = "springgreen4", 
+  "Kongsfjorden" = "chocolate3", 
+  "Isfjorden" = "goldenrod", 
+  "Storfjorden" = "burlywood3", 
+  "Young Sound" = "chartreuse3", 
   "Qeqertarsuup Tunua" = "springgreen3", 
-  "Nuup Kangerlua" = "springgreen1", 
-  "Porsangerfjorden" = "plum4"
+  "Nuup Kangerlua" = "palegreen1", 
+  "Porsangerfjorden" = "plum3"
 )
 
 # Colour palette for sites
@@ -114,7 +114,7 @@ filter_4D_cube <- function(year_val, file_name, var_name, depth_mask){
 }
 
 # Convenience wrapper to load global surface, clim values, and monthly  values
-load_PAR <- function(file_name, depth_limit = -50){
+load_PAR <- function(file_name, depth_limit = -200){
   
   # Load global surface data
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
@@ -237,7 +237,7 @@ PAR_summarise <- function(PAR_df){
 # Summarise the spatial area of pixels with a given PAR threshold
 # NB: depth_limit is only applied to global values
 # It is assumed that the depth limit was applied to the other layers upon loading
-PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.13, depth_limit = -50){
+PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.13, depth_limit = -200){
 
   # Global
   PAR_spat_global <- PAR_list$PAR_global |> 
