@@ -651,6 +651,10 @@ fig_S2 <- ggpubr::annotate_figure(fig_S2, top = ggpubr::text_grob("Annual averag
 ggsave("figures/fig_S2.png", fig_S2, height = 6, width = 8)
 
 
+# Figure S3 ---------------------------------------------------------------
+# Plot showing how average PAR_B changes at depth, with depth on y-axis
+
+
 # Table 1 -----------------------------------------------------------------
 # Light requirements by species
 

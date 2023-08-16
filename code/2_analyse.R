@@ -10,21 +10,14 @@ source("code/0_functions.R")
 # Load data ---------------------------------------------------------------
 
 # This loads bathymetry, pixel area, and all forms of PAR and Kd
-# NB: This takes several minutes
-# PAR_kong <- load_PAR("data/PAR/kong.nc")
-# PAR_is <- load_PAR("data/PAR/is.nc")
-# PAR_stor <- load_PAR("data/PAR/stor.nc")
-# PAR_young <- load_PAR("data/PAR/young.nc")
-# PAR_disko <- load_PAR("data/PAR/disko.nc")
-# PAR_nuup <- load_PAR("data/PAR/nuup.nc")
-# PAR_por <- load_PAR("data/PAR/por.nc")
-PAR_kong <- fl_LoadFjord("kong", "data/PAR")
-PAR_is <- fl_LoadFjord("is", "data/PAR")
-PAR_stor <- fl_LoadFjord("stor", "data/PAR")
-PAR_young <- fl_LoadFjord("young", "data/PAR")
-PAR_disko <- fl_LoadFjord("disko", "data/PAR")
-PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
-PAR_por <- fl_LoadFjord("por", "data/PAR")
+# NB: This takes +15 minutes
+PAR_kong <- load_PAR("kong")
+PAR_is <- load_PAR("is")
+PAR_stor <- load_PAR("stor")
+PAR_young <- load_PAR("young")
+PAR_disko <- load_PAR("disko")
+PAR_nuup <- load_PAR("nuup")
+PAR_por <- load_PAR("por")
 
 
 # Extract bathymetry ------------------------------------------------------
@@ -41,148 +34,98 @@ PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 # Annual analyses ---------------------------------------------------------
 
-# TODO: Do the annual PAR change analyses for just the first 10 metres to better show changes
-PAR_kong_annual <- flget_climatology(fjord = PAR_kong, optics = "PAR0m", period = "Yearly", year = 2003, mode = "3col")
-PAR_kong_annual <- plyr::ldply(2003:2022, flget_climatology, fjord = PAR_kong, optics = "PAR0m", 
-                               period = "Yearly", month = NA, mode = "3col", .parallel = T)
-PAR_kong_annual_long <- PAR_kong_annual |> 
-  pivot_longer(cols = c(PAR0m_2003, PAR0m_2022), names_to = "name_long", values_to = "value") 
-
-PAR_kong_annual <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1,D3") |> tidync::hyper_tibble()
-
-
 # Get range of summary states per time step
-PAR_kong_annual_summary <- PAR_summarise(PAR_kong$PAR_annual) |> mutate(site = "kong")
-PAR_is_annual_summary <- PAR_summarise(PAR_is$PAR_annual) |> mutate(site = "is")
-PAR_stor_annual_summary <- PAR_summarise(PAR_stor$PAR_annual) |> mutate(site = "stor")
-PAR_young_annual_summary <- PAR_summarise(PAR_young$PAR_annual) |> mutate(site = "young")
-PAR_disko_annual_summary <- PAR_summarise(PAR_disko$PAR_annual) |> mutate(site = "disko")
-PAR_nuup_annual_summary <- PAR_summarise(PAR_nuup$PAR_annual) |> mutate(site = "nuup")
-PAR_por_annual_summary <- PAR_summarise(PAR_por$PAR_annual) |> mutate(site = "por")
+PAR_kong_annual_summary <- PAR_summarise(PAR_kong$PAR_annual, "kong")
+PAR_is_annual_summary <- PAR_summarise(PAR_is$PAR_annual, "is")
+PAR_stor_annual_summary <- PAR_summarise(PAR_stor$PAR_annual, "stor")
+PAR_young_annual_summary <- PAR_summarise(PAR_young$PAR_annual, "young")
+PAR_disko_annual_summary <- PAR_summarise(PAR_disko$PAR_annual, "disko")
+PAR_nuup_annual_summary <- PAR_summarise(PAR_nuup$PAR_annual, "nuup")
+PAR_por_annual_summary <- PAR_summarise(PAR_por$PAR_annual, "por")
 
 # Combine and save
 PAR_annual_summary <- rbind(PAR_kong_annual_summary, PAR_is_annual_summary, PAR_stor_annual_summary,
                             PAR_young_annual_summary, PAR_disko_annual_summary, PAR_nuup_annual_summary,
-                            PAR_por_annual_summary) |> dplyr::select(site, everything())
+                            PAR_por_annual_summary)
 save(PAR_annual_summary, file = "data/PAR_annual_summary.RData")
-
-# Run linear models per pixel
-# PAR_kong_bottom_lm <- plyr::ddply(PAR_kong_bottom, c("lon", "lat", "Months"), lm_tidy, .parallel = T)
-# PAR_kong_yearly_lm <- plyr::ddply(PAR_kong_yearly, c("lon", "lat", "name"), lm_tidy, .parallel = T)
-
-# Save
-# save(PAR_kong_bottom_lm, file = "data/PAR_kong_bottom_lm.RData")
-# save(PAR_kong_yearly_lm, file = "data/PAR_kong_yearly_lm.RData")
-
-# Load
-load("data/PAR_kong_bottom_lm.RData")
-load("data/PAR_kong_yearly_lm.RData")
-
-# Test plots
-unique(PAR_kong_bottom_lm$Months)
-PAR_kong_bottom_lm |> 
-  filter(Months == 10) |> 
-  left_join(bathy_kong_df, by = c("lon", "lat")) |> 
-  filter(depth >= -200) |> 
-  ggplot(aes( x = lon, y = lat)) +
-  geom_raster(aes(fill = slope)) +
-  scale_fill_gradient2()
-unique(PAR_kong_yearly_lm$name)
-PAR_kong_yearly_lm |> 
-  filter(name == "YearlyPAR0m") |> 
-  left_join(bathy_kong_df, by = c("lon", "lat")) |> 
-  filter(depth >= -200) |> 
-  ggplot(aes( x = lon, y = lat)) +
-  geom_raster(aes(fill = slope)) +
-  scale_fill_gradient2()
-
+rm(PAR_kong_annual_summary, PAR_is_annual_summary, PAR_stor_annual_summary,
+   PAR_young_annual_summary, PAR_disko_annual_summary, PAR_nuup_annual_summary,
+   PAR_por_annual_summary); gc()
 
 
 # Monthly clim analyses ---------------------------------------------------
 
 # Get range of summary states per time step
-PAR_kong_clim_summary <- PAR_summarise(PAR_kong$PAR_clim) |> mutate(site = "kong")
-PAR_is_clim_summary <- PAR_summarise(PAR_is$PAR_clim) |> mutate(site = "is")
-PAR_stor_clim_summary <- PAR_summarise(PAR_stor$PAR_clim) |> mutate(site = "stor")
-PAR_young_clim_summary <- PAR_summarise(PAR_young$PAR_clim) |> mutate(site = "young")
-PAR_disko_clim_summary <- PAR_summarise(PAR_disko$PAR_clim) |> mutate(site = "disko")
-PAR_nuup_clim_summary <- PAR_summarise(PAR_nuup$PAR_clim) |> mutate(site = "nuup")
-PAR_por_clim_summary <- PAR_summarise(PAR_por$PAR_clim) |> mutate(site = "por")
+PAR_kong_clim_summary <- PAR_summarise(PAR_kong$PAR_clim, "kong")
+PAR_is_clim_summary <- PAR_summarise(PAR_is$PAR_clim, "is")
+PAR_stor_clim_summary <- PAR_summarise(PAR_stor$PAR_clim, "stor")
+PAR_young_clim_summary <- PAR_summarise(PAR_young$PAR_clim, "young")
+PAR_disko_clim_summary <- PAR_summarise(PAR_disko$PAR_clim, "disko")
+PAR_nuup_clim_summary <- PAR_summarise(PAR_nuup$PAR_clim, "nuup")
+PAR_por_clim_summary <- PAR_summarise(PAR_por$PAR_clim, "por")
 
 # Combine and save
 PAR_clim_summary <- rbind(PAR_kong_clim_summary, PAR_is_clim_summary, PAR_stor_clim_summary,
                           PAR_young_clim_summary, PAR_disko_clim_summary, PAR_nuup_clim_summary,
-                          PAR_por_clim_summary) |> dplyr::select(site, everything())
+                          PAR_por_clim_summary)
 save(PAR_clim_summary, file = "data/PAR_clim_summary.RData")
+rm(PAR_kong_clim_summary, PAR_is_clim_summary, PAR_stor_clim_summary,
+   PAR_young_clim_summary, PAR_disko_clim_summary, PAR_nuup_clim_summary,
+   PAR_por_clim_summary); gc()
 
 
 # Monthly analyses --------------------------------------------------------
 
 # Get range of summary states per time step
-PAR_kong_monthly_summary <- PAR_summarise(PAR_kong$PAR_monthly) |> mutate(site = "kong")
-PAR_is_monthly_summary <- PAR_summarise(PAR_is$PAR_monthly) |> mutate(site = "is")
-PAR_stor_monthly_summary <- PAR_summarise(PAR_stor$PAR_monthly) |> mutate(site = "stor")
-PAR_young_monthly_summary <- PAR_summarise(PAR_young$PAR_monthly) |> mutate(site = "young")
-PAR_disko_monthly_summary <- PAR_summarise(PAR_disko$PAR_monthly) |> mutate(site = "disko")
-PAR_nuup_monthly_summary <- PAR_summarise(PAR_nuup$PAR_monthly) |> mutate(site = "nuup")
-PAR_por_monthly_summary <- PAR_summarise(PAR_por$PAR_monthly) |> mutate(site = "por")
+PAR_kong_monthly_summary <- PAR_summarise(PAR_kong$PAR_monthly, "kong")
+PAR_is_monthly_summary <- PAR_summarise(PAR_is$PAR_monthly, "is")
+PAR_stor_monthly_summary <- PAR_summarise(PAR_stor$PAR_monthly, "stor")
+PAR_young_monthly_summary <- PAR_summarise(PAR_young$PAR_monthly, "young")
+PAR_disko_monthly_summary <- PAR_summarise(PAR_disko$PAR_monthly, "disko")
+PAR_nuup_monthly_summary <- PAR_summarise(PAR_nuup$PAR_monthly, "nuup")
+PAR_por_monthly_summary <- PAR_summarise(PAR_por$PAR_monthly, "por")
 
 # Combine and save
 PAR_monthly_summary <- rbind(PAR_kong_monthly_summary, PAR_is_monthly_summary, PAR_stor_monthly_summary,
                              PAR_young_monthly_summary, PAR_disko_monthly_summary, PAR_nuup_monthly_summary,
-                             PAR_por_monthly_summary) |> dplyr::select(site, everything())
+                             PAR_por_monthly_summary)
 save(PAR_monthly_summary, file = "data/PAR_monthly_summary.RData")
+rm(PAR_kong_monthly_summary, PAR_is_monthly_summary, PAR_stor_monthly_summary,
+   PAR_young_monthly_summary, PAR_disko_monthly_summary, PAR_nuup_monthly_summary,
+   PAR_por_monthly_summary); gc()
 
 
 # Spatial analyses --------------------------------------------------------
 
-# TODO: Run kelp bottom area calcs just on the annual values. 
-# This is because the light requirements are per year, so doing it per month is not correct.
-
 # Get area summary per time step
-PAR_kong_spatial_summary <- PAR_spat_sum(PAR_kong) |> mutate(site = "kong")
-PAR_is_spatial_summary <- PAR_spat_sum(PAR_is) |> mutate(site = "is")
-PAR_stor_spatial_summary <- PAR_spat_sum(PAR_stor) |> mutate(site = "stor")
-PAR_young_spatial_summary <- PAR_spat_sum(PAR_young) |> mutate(site = "young")
-PAR_disko_spatial_summary <- PAR_spat_sum(PAR_disko) |> mutate(site = "disko")
-PAR_nuup_spatial_summary <- PAR_spat_sum(PAR_nuup) |> mutate(site = "nuup")
-PAR_por_spatial_summary <- PAR_spat_sum(PAR_por) |> mutate(site = "por")
+PAR_kong_spatial_summary <- PAR_spat_sum(PAR_kong, "kong")
+PAR_is_spatial_summary <- PAR_spat_sum(PAR_is, "is")
+PAR_stor_spatial_summary <- PAR_spat_sum(PAR_stor, "stor")
+PAR_young_spatial_summary <- PAR_spat_sum(PAR_young, "young")
+PAR_disko_spatial_summary <- PAR_spat_sum(PAR_disko, "disko")
+PAR_nuup_spatial_summary <- PAR_spat_sum(PAR_nuup, "nuup")
+PAR_por_spatial_summary <- PAR_spat_sum(PAR_por, "por")
 
 # Combine and save
 PAR_spatial_summary <- rbind(PAR_kong_spatial_summary, PAR_is_spatial_summary, PAR_stor_spatial_summary,
                              PAR_young_spatial_summary, PAR_disko_spatial_summary, PAR_nuup_spatial_summary,
-                             PAR_por_spatial_summary) |> dplyr::select(site, everything())
+                             PAR_por_spatial_summary)
 save(PAR_spatial_summary, file = "data/PAR_spatial_summary.RData")
-
-# Explicitly call gaps in months
-PAR_spat_sum_complete <- PAR_spatial_summary |> 
-  mutate(date = as.Date(paste0(year,"-",month,"-01"))) |> 
-  group_by(site) |> 
-  tidyr::complete(date = seq(min(date), max(date), by = "month")) |> 
-  ungroup()
+rm(PAR_kong_spatial_summary, PAR_is_spatial_summary, PAR_stor_spatial_summary,
+   PAR_young_spatial_summary, PAR_disko_spatial_summary, PAR_nuup_spatial_summary,
+   PAR_por_spatial_summary); gc()
 
 # Calculate p-values of linear models on annual bottom PAR as a full time series
 PAR_lm_annual <- PAR_spatial_summary |> 
-  dplyr::select(site, year, annual_area) |>  distinct() |> 
-  dplyr::rename(t = year, value = annual_area) |> 
+  dplyr::select(site, year, annual_perc) |>  distinct() |> 
+  dplyr::rename(t = year, value = annual_perc) |> 
   plyr::ddply(c("site"), lm_tidy, .parallel = T)
 save(PAR_lm_annual, file = "data/PAR_lm_annual.RData")
 
-# Calculate p-values of linear models on monthly bottom PAR as a full time series
-PAR_lm_annual_monthly <- PAR_spat_sum_complete |> 
-  dplyr::rename(t = date, value = monthly_area) |> 
-  plyr::ddply(c("site"), lm_tidy, .parallel = T)
-save(PAR_lm_annual_monthly, file = "data/PAR_lm_annual_monthly.RData")
 
-# Calculate p-values of linear models on monthly bottom PAR as a per month time series
-PAR_lm_monthl_monthly <- PAR_spat_sum_complete |>
-  filter(!is.na(month)) |> 
-  dplyr::rename(t = date, value = monthly_area) |> 
-  plyr::ddply(c("site", "month"), lm_tidy, .parallel = T)
-save(PAR_lm_monthl_monthly, file = "data/PAR_lm_monthl_monthly.RData")
+# P-functions -------------------------------------------------------------
 
-
-# p functions -------------------------------------------------------------
+# TODO: Need to calculate p-functions based on a depth limit of 50 m
 
 # Get surface areas from FjordLight package
 # as a function

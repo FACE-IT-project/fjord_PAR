@@ -13,6 +13,9 @@ library(raster)
 library(FjordLight)
 library(doParallel); registerDoParallel(cores = 15)
 
+# Remove scientific notation
+options(scipen = 9999)
+
 
 # Metadata ----------------------------------------------------------------
 
@@ -91,9 +94,9 @@ filter_3D_cube <- function(var_name, file_name, depth_mask){
   PAR_brick <- raster::brick(file_name, values = TRUE, varname = var_name)
   PAR_df <- raster::extract(PAR_brick, coord_mask) |> cbind(depth_mask) |>
     pivot_longer(cols = c(-lon, -lat, -depth, -area), names_to = "date") |> 
+    filter(!is.na(value)) |> 
     mutate(date = as.numeric(gsub("X", "", date))) |> 
-    dplyr::select(lon, lat, depth, area, date, value) #|> 
-    # mutate(lon = round(lon, 5), lat = round(lat, 5), depth = round(depth, 6), area = round(area, 10))
+    dplyr::select(lon, lat, depth, area, date, value)
   colnames(PAR_df)[6] <- var_name
   return(PAR_df)
 }
@@ -106,6 +109,7 @@ filter_4D_cube <- function(year_val, file_name, var_name, depth_mask){
   PAR_brick <- raster::brick(file_name, values = TRUE, varname = var_name, lvar = 4, level = year_val)
   PAR_df <- raster::extract(PAR_brick, coord_mask) |> cbind(depth_mask) |>
     pivot_longer(cols = X3:X10, names_to = "month") |> 
+    filter(!is.na(value)) |> 
     # NB: Years start at 2003, hence 'year_val+2002'
     mutate(date = as.Date(paste0(year_val+2002,"-",gsub("X", "", month),"-01"))) |> 
     dplyr::select(lon, lat, depth, area, date, value)
@@ -114,38 +118,42 @@ filter_4D_cube <- function(year_val, file_name, var_name, depth_mask){
 }
 
 # Convenience wrapper to load global surface, clim values, and monthly  values
-load_PAR <- function(file_name, depth_limit = -50){
+load_PAR <- function(site_name_short, depth_limit = -50){
+  
+  # Find file name
+  file_name <- file_name_search(site_name_short)
   
   # Load global surface data
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
     hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry) |> 
-    dplyr::select(lon, lat, depth, area, everything())
+    dplyr::select(lon, lat, depth, area, everything()) |> 
+    filter(!is.na(depth))
   
   # Depth mask
-  depth_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)
+  depth_limit_mask <- PAR_global |> filter(depth >= depth_limit) |> dplyr::select(lon, lat, depth, area)
+  depth_no_mask <- PAR_global |> dplyr::select(lon, lat, depth, area)
   
   # Load annual values
-  PAR_YearlyPAR0m <- filter_3D_cube("YearlyPAR0m", file_name, depth_mask)
-  PAR_Yearlykdpar <- filter_3D_cube("Yearlykdpar", file_name, depth_mask)
-  PAR_YearlyPARbottom <- filter_3D_cube("YearlyPARbottom", file_name, depth_mask)
+  PAR_YearlyPAR0m <- filter_3D_cube("YearlyPAR0m", file_name, depth_no_mask)
+  PAR_Yearlykdpar <- filter_3D_cube("Yearlykdpar", file_name, depth_no_mask)
+  PAR_YearlyPARbottom <- filter_3D_cube("YearlyPARbottom", file_name, depth_no_mask)
   PAR_annual <- left_join(PAR_YearlyPAR0m, PAR_Yearlykdpar, by = c("lon", "lat", "depth", "area", "date")) |> 
     left_join(PAR_YearlyPARbottom, by = c("lon", "lat", "depth", "area", "date")) |> rename(year = date)
   rm(PAR_YearlyPAR0m, PAR_Yearlykdpar, PAR_YearlyPARbottom); gc()
-  # TODO: Figure out why this doesn't correctly merge by common columns
-  # PAR_annual <- plyr::ldply(c("YearlyPARbottom", "YearlyPAR0m", "Yearlykdpar"), filter_3D_cube,
-  #                           .parallel = T, file_name = file_name, depth_mask = depth_mask) |> rename(year = date)
   
   # Load clim monthly values
-  PAR_MonthlyPAR0m <- filter_3D_cube("MonthlyPAR0m", file_name, depth_mask)
-  PAR_Monthlykdpar <- filter_3D_cube("Monthlykdpar", file_name, depth_mask)
-  PAR_MonthlyPARbottom <- filter_3D_cube("MonthlyPARbottom", file_name, depth_mask)
+  PAR_MonthlyPAR0m <- filter_3D_cube("MonthlyPAR0m", file_name, depth_no_mask)
+  PAR_Monthlykdpar <- filter_3D_cube("Monthlykdpar", file_name, depth_no_mask)
+  PAR_MonthlyPARbottom <- filter_3D_cube("MonthlyPARbottom", file_name, depth_no_mask)
   PAR_clim <- left_join(PAR_MonthlyPAR0m, PAR_Monthlykdpar, by = c("lon", "lat", "depth", "area", "date")) |> 
     left_join(PAR_MonthlyPARbottom, by = c("lon", "lat", "depth", "area", "date")) |> rename(month = date)
   rm(PAR_MonthlyPAR0m, PAR_Monthlykdpar, PAR_MonthlyPARbottom); gc()
   
   # Load monthly bottom data
+  # NB: Some datasets are too beefy to load on many cores in parallel
+  registerDoParallel(cores = 5)
   PAR_monthly <- plyr::ldply(1:20, filter_4D_cube, .parallel = T,
-                            file_name = file_name, var_name = "PARbottom", depth_mask = depth_mask)
+                            file_name = file_name, var_name = "PARbottom", depth_mask = depth_limit_mask)
     
   # Merge all
   PAR_list <- list(PAR_global = PAR_global,
@@ -228,19 +236,20 @@ PAR_summarise <- function(PAR_df, site_name = NULL){
   # Summarise data
   PAR_summary <- PAR_df |> 
     dplyr::select(-lon, -lat, -depth, -area) |> 
-    pivot_longer(cols = -all_of(group_col)) |> 
+    pivot_longer(cols = -all_of(group_col), names_to = "variable") |> 
     summarise(min = min(value, na.rm = T),
               q10 = quantile(value, 0.1, na.rm = T),
               q50 = quantile(value, 0.5, na.rm = T),
               mean = mean(value, na.rm = T),
               q90 = quantile(value, 0.9, na.rm = T),
               max = max(value, na.rm = T),
-              .by = c(name, all_of(group_col)))
+              .by = c(variable, all_of(group_col))) |> 
+    mutate(across(min:max, \(x) round(x, 4)))
   
   # Add site name
   if(!is.null(site_name)){
     PAR_summary <- PAR_summary |> 
-      mutate(site = site_name, .before = min)
+      mutate(site = site_name, .before = variable)
   }
   return(PAR_summary)
   # rm(PAR_df, group_col, PAR_summary)
@@ -249,35 +258,35 @@ PAR_summarise <- function(PAR_df, site_name = NULL){
 # Summarise the spatial area of pixels with a given PAR threshold
 # NB: depth_limit is only applied to global values
 # It is assumed that the depth limit was applied to the other layers upon loading
-PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.13, depth_limit = -50){
+PAR_spat_sum <- function(PAR_list, site_name = NULL, PAR_thresh = 0.13, depth_limit = -50){
 
+  # Are of fjord >= depth_limit
+  bottom_area <- PAR_list$PAR_global |> 
+    filter(depth >= depth_limit) |> 
+    summarise(total = sum(area))
+  
   # Global
   PAR_spat_global <- PAR_list$PAR_global |> 
     filter(depth >= depth_limit, GlobalPARbottom >= PAR_thresh) |> 
     summarise(global_area = sum(area, na.rm = T))
   
   # Annual
-  PAR_spat_annual <- PAR_list$PAR_annual |> 
+  PAR_spatial <- PAR_list$PAR_annual |> 
     filter(YearlyPARbottom >= PAR_thresh) |> 
-    summarise(annual_area = sum(area, na.rm = T), .by = "year")
+    summarise(annual_area = sum(area, na.rm = T), .by = "year") |> 
+    mutate(global_area = PAR_spat_global$global_area,
+           bottom_area = bottom_area$total,
+           annual_perc = annual_area/bottom_area,
+           global_perc = global_area/bottom_area) |> 
+    arrange(year)
   
-  # Clim
-  PAR_spat_clim <- PAR_list$PAR_clim |> 
-    filter(MonthlyPARbottom >= PAR_thresh) |> 
-    summarise(clim_area = sum(area, na.rm = T), .by = "month")
-  
-  # Summarise data
-  PAR_spat_monthly <- PAR_list$PAR_monthly |> 
-    filter(PARbottom >= PAR_thresh) |> 
-    mutate(month = month(date), year = year(date)) |> 
-    summarise(monthly_area = sum(area, na.rm = T), .by = c("year", "month"))
-  
-  # Combine and Exit
-  PAR_spatial <- left_join(PAR_spat_monthly, PAR_spat_annual, by = "year") |> 
-    left_join(PAR_spat_clim, by = "month") |> 
-    mutate(global_area = PAR_spat_global$global_area)
+  # Add site name
+  if(!is.null(site_name)){
+    PAR_spatial <- PAR_spatial |> 
+      mutate(site = site_name, .before = year)
+  }
   return(PAR_spatial)
-  # rm(PAR_list, PAR_spat_global, PAR_spat_monthly, PAR_spat_annual, PAR_spat_clim, PAR_spatial); gc()
+  # rm(PAR_list, site_name, PAR_thresh, depth_limit, bottom_area, PAR_spat_global, PAR_spatial); gc()
 }
 
 # Convenience wrapper for desired PAR linear model
