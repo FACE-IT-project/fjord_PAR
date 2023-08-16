@@ -332,6 +332,7 @@ ggsave("figures/fig_2.png", fig_2, height = 6, width = 8)
 # Surface
 # TODO: Put p-values of slopes on figures as labels?
 # TODO: Get legend text to not over plot itself
+# TODO: Only use panels a and b because they are the values used in the calculations
 fig_3a <- PAR_annual_summary |> 
   filter(name == "YearlyPAR0m") |> 
   left_join(long_site_names, by = "site") |> 

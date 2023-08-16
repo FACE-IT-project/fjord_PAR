@@ -11,28 +11,45 @@ source("code/0_functions.R")
 
 # This loads bathymetry, pixel area, and all forms of PAR and Kd
 # NB: This takes several minutes
-PAR_kong <- load_PAR("data/PAR/kong.nc")
-PAR_is <- load_PAR("data/PAR/is.nc")
-PAR_stor <- load_PAR("data/PAR/stor.nc")
-PAR_young <- load_PAR("data/PAR/young.nc")
-PAR_disko <- load_PAR("data/PAR/disko.nc")
-PAR_nuup <- load_PAR("data/PAR/nuup.nc")
-PAR_por <- load_PAR("data/PAR/por.nc")
+# PAR_kong <- load_PAR("data/PAR/kong.nc")
+# PAR_is <- load_PAR("data/PAR/is.nc")
+# PAR_stor <- load_PAR("data/PAR/stor.nc")
+# PAR_young <- load_PAR("data/PAR/young.nc")
+# PAR_disko <- load_PAR("data/PAR/disko.nc")
+# PAR_nuup <- load_PAR("data/PAR/nuup.nc")
+# PAR_por <- load_PAR("data/PAR/por.nc")
+PAR_kong <- fl_LoadFjord("kong", "data/PAR")
+PAR_is <- fl_LoadFjord("is", "data/PAR")
+PAR_stor <- fl_LoadFjord("stor", "data/PAR")
+PAR_young <- fl_LoadFjord("young", "data/PAR")
+PAR_disko <- fl_LoadFjord("disko", "data/PAR")
+PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
+PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 
 # Extract bathymetry ------------------------------------------------------
 
 # NB: Not currently necessary because all data already have bathy joined to them
-bathy_kong <- PAR_kong$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
-bathy_is <- PAR_is$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
-bathy_stor <- PAR_stor$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
-bathy_young <- PAR_young$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
-bathy_disko <- PAR_disko$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
-bathy_nuup <- PAR_nuup$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
-bathy_por <- PAR_por$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_kong <- PAR_kong$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_is <- PAR_is$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_stor <- PAR_stor$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_young <- PAR_young$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_disko <- PAR_disko$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_nuup <- PAR_nuup$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
+# bathy_por <- PAR_por$PAR_global |> dplyr::select(lon, lat, depth, area) |> distinct()
 
 
 # Annual analyses ---------------------------------------------------------
+
+# TODO: Do the annual PAR change analyses for just the first 10 metres to better show changes
+PAR_kong_annual <- flget_climatology(fjord = PAR_kong, optics = "PAR0m", period = "Yearly", year = 2003, mode = "3col")
+PAR_kong_annual <- plyr::ldply(2003:2022, flget_climatology, fjord = PAR_kong, optics = "PAR0m", 
+                               period = "Yearly", month = NA, mode = "3col", .parallel = T)
+PAR_kong_annual_long <- PAR_kong_annual |> 
+  pivot_longer(cols = c(PAR0m_2003, PAR0m_2022), names_to = "name_long", values_to = "value") 
+
+PAR_kong_annual <- tidync::tidync("data/PAR/kong.nc") |> tidync::activate("D0,D1,D3") |> tidync::hyper_tibble()
+
 
 # Get range of summary states per time step
 PAR_kong_annual_summary <- PAR_summarise(PAR_kong$PAR_annual) |> mutate(site = "kong")
@@ -118,6 +135,9 @@ save(PAR_monthly_summary, file = "data/PAR_monthly_summary.RData")
 
 
 # Spatial analyses --------------------------------------------------------
+
+# TODO: Run kelp bottom area calcs just on the annual values. 
+# This is because the light requirements are per year, so doing it per month is not correct.
 
 # Get area summary per time step
 PAR_kong_spatial_summary <- PAR_spat_sum(PAR_kong) |> mutate(site = "kong")

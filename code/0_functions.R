@@ -114,7 +114,7 @@ filter_4D_cube <- function(year_val, file_name, var_name, depth_mask){
 }
 
 # Convenience wrapper to load global surface, clim values, and monthly  values
-load_PAR <- function(file_name, depth_limit = -200){
+load_PAR <- function(file_name, depth_limit = -50){
   
   # Load global surface data
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
@@ -156,11 +156,6 @@ load_PAR <- function(file_name, depth_limit = -200){
   # Exit
   return(PAR_list)
   # rm(file_name, depth_limit, depth_mask, PAR_global, PAR_annual, PAR_clim, PAR_monthly, PAR_list)
-}
-
-# Loads all of the analyses performed per site in '2_analyse.R'
-load_results <- function(site_name){
-  
 }
 
 # Takes site short name and returns the local or pCloud location of the PAR NetCDF
@@ -206,8 +201,19 @@ load_p_annual <- function(site_name_short){
     mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
 }
 
+# Run this to quickly load and merge all annual values
+load_all_annual <- function(){
+  
+  # Find file name
+  file_name <- file_name_search(site_name_short)
+  
+  # Load data
+  tidync::tidync(file_name) |> tidync::activate("D4,D3") |> tidync::hyper_tibble() |> 
+    mutate(site = long_site_names$site_long[long_site_names$site == site_name_short], .before = 1)
+}
+
 # Summaries of PAR data
-PAR_summarise <- function(PAR_df){
+PAR_summarise <- function(PAR_df, site_name = NULL){
   
   # Determine grouping column(s)
   if("year" %in% colnames(PAR_df)) {
@@ -230,6 +236,12 @@ PAR_summarise <- function(PAR_df){
               q90 = quantile(value, 0.9, na.rm = T),
               max = max(value, na.rm = T),
               .by = c(name, all_of(group_col)))
+  
+  # Add site name
+  if(!is.null(site_name)){
+    PAR_summary <- PAR_summary |> 
+      mutate(site = site_name, .before = min)
+  }
   return(PAR_summary)
   # rm(PAR_df, group_col, PAR_summary)
 }
@@ -237,7 +249,7 @@ PAR_summarise <- function(PAR_df){
 # Summarise the spatial area of pixels with a given PAR threshold
 # NB: depth_limit is only applied to global values
 # It is assumed that the depth limit was applied to the other layers upon loading
-PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.13, depth_limit = -200){
+PAR_spat_sum <- function(PAR_list, PAR_thresh = 0.13, depth_limit = -50){
 
   # Global
   PAR_spat_global <- PAR_list$PAR_global |> 
