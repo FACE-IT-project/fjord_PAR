@@ -297,6 +297,85 @@ lm_tidy <- function(df){
     dplyr::rename(slope = estimate)
 }
 
+# Convenience function for 'calc_p_function'
+calc_p_step <- function(PAR_limit, PAR_df, bot_area){
+  
+  # Determine grouping column(s)
+  if("year" %in% colnames(PAR_df)) {
+    group_col <- "year"
+  } else if("month" %in% colnames(PAR_df)) {
+    group_col <- "month"
+  } else if("date" %in% colnames(PAR_df)) {
+    group_col <- c("year", "month")
+    PAR_df <- mutate(PAR_df, month = month(date), year = year(date)) |> dplyr::select(-date)
+  } else {
+    group_col <- c("global")
+    PAR_df <- mutate(PAR_df, global = "global")
+  }
+  
+  PAR_df |> 
+    filter(value >= PAR_limit) |> 
+    summarise(limit_area = sum(area, na.rm = T),
+              .by = all_of(group_col)) |> 
+    mutate(limit_perc = limit_area/bot_area,
+           PAR_limit = PAR_limit)
+}
+
+# Calculate P-functions based on a given depth limit
+calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
+  
+  # Get the area of the fjord >= depth limit
+  bottom_area <- PAR_list$PAR_global |> 
+    filter(depth >= depth_limit) |> 
+    summarise(total = sum(area))
+  
+  # Set the sequence to use for p-functions
+  p_seq <- c(seq(0.001, 0.009, 0.001), seq(0.01, 0.09, 0.01), seq(0.1, 0.9, 0.1), seq(1, 10, 1))
+  
+  # Calculate global P-functions
+  PAR_global <- PAR_list$PAR_global |> 
+    pivot_longer(GlobalPARbottom:Globalkdpar) |> 
+    filter(name == "GlobalPARbottom", depth >= depth_limit)
+  PAR_global_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
+                              PAR_df = PAR_global, bot_area = bottom_area$total) |> 
+    dplyr::rename(global_area = limit_area, global_perc = limit_perc) |> 
+    dplyr::select(-global)
+ 
+  # Calculate annual P-functions
+  PAR_annual <- PAR_list$PAR_annual |> 
+    pivot_longer(YearlyPAR0m:YearlyPARbottom) |> 
+    filter(name == "YearlyPARbottom", depth >= depth_limit)
+  PAR_annual_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
+                              PAR_df = PAR_annual, bot_area = bottom_area$total) |> 
+    dplyr::rename(yearly_area = limit_area, yearly_perc = limit_perc)
+  
+  # Calculate clim P-functions
+  PAR_clim <- PAR_list$PAR_clim |> 
+    pivot_longer(MonthlyPAR0m:MonthlyPARbottom) |> 
+    filter(name == "MonthlyPARbottom", depth >= depth_limit)
+  PAR_clim_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
+                            PAR_df = PAR_clim, bot_area = bottom_area$total) |> 
+    dplyr::rename(clim_area = limit_area, clim_perc = limit_perc)
+  
+  # Calculate clim P-functions
+  PAR_monthly <- PAR_list$PAR_monthly |> 
+    pivot_longer(PARbottom) |> 
+    filter(name == "PARbottom", depth >= depth_limit)
+  PAR_monthly_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
+                               PAR_df = PAR_monthly, bot_area = bottom_area$total) |> 
+    dplyr::rename(monthly_area = limit_area, monthly_perc = limit_perc)
+  
+  # Combine and exit
+  PAR_p <- left_join(PAR_monthly_p, PAR_annual_p, by = c("PAR_limit", "year")) |> 
+    left_join(PAR_clim_p, by = c("PAR_limit", "month")) |> 
+    left_join(PAR_global_p, by = "PAR_limit") |> 
+    mutate(site = site_name) |>
+    dplyr::select(site, PAR_limit, year, month, everything()) |> 
+    mutate(across(monthly_area:global_perc, \(x) round(x, 4)))
+  return(PAR_p)
+  # rm(PAR_df)
+}
+
 # Function for finding and cleaning up points within a given region polygon
 points_in_region <- function(region_in, bbox_df, data_df){
   region_sub <- bbox_df %>% 

@@ -657,8 +657,17 @@ ggsave("figures/fig_S2.png", fig_S2, height = 6, width = 8)
 
 # Table 1 -----------------------------------------------------------------
 # Light requirements by species
-
+# This was made by the co-authors directly within the manuscript
 
 # Table 2 -----------------------------------------------------------------
 # Changes to inhabitable area over time by site
+
+# Columns show sites
+# Rows show:
+## Total inhabitable area >= 50 m depth
+## Lowest perent cover
+## Highest perent cover
+## Slope
+## R2
+## p-value
 
