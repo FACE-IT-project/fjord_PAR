@@ -10,7 +10,7 @@ source("code/0_functions.R")
 # Load data ---------------------------------------------------------------
 
 # This loads bathymetry, pixel area, and all forms of PAR and Kd
-# NB: This takes +15 minutes
+# NB: Only run one line at a time, this takes ~15 minutes and ~100 GB of RAM
 PAR_kong <- load_PAR("kong")
 PAR_is <- load_PAR("is")
 PAR_stor <- load_PAR("stor")
@@ -51,6 +51,14 @@ save(PAR_annual_summary, file = "data/PAR_annual_summary.RData")
 rm(PAR_kong_annual_summary, PAR_is_annual_summary, PAR_stor_annual_summary,
    PAR_young_annual_summary, PAR_disko_annual_summary, PAR_nuup_annual_summary,
    PAR_por_annual_summary); gc()
+
+# Calculate p-values of linear models on annual PAR values as full time series
+# NB: This also calculates the values for bottom PAR
+PAR_annual_lm <- PAR_annual_summary |> 
+   dplyr::select(site, year, variable, q50) |>  distinct() |> 
+   dplyr::rename(t = year, value = q50) |> 
+   plyr::ddply(c("site", "variable"), lm_tidy, .parallel = T)
+save(PAR_annual_lm, file = "data/PAR_annual_lm.RData")
 
 
 # Monthly clim analyses ---------------------------------------------------
@@ -94,6 +102,13 @@ rm(PAR_kong_monthly_summary, PAR_is_monthly_summary, PAR_stor_monthly_summary,
    PAR_young_monthly_summary, PAR_disko_monthly_summary, PAR_nuup_monthly_summary,
    PAR_por_monthly_summary); gc()
 
+# Calculate p-values of linear models on monthly bottom PAR as a full time series
+PAR_monthly_lm <- PAR_monthly_summary |> 
+   dplyr::select(site, year, month, variable, q50) |>  distinct() |> 
+   dplyr::rename(t = year, value = q50) |> 
+   plyr::ddply(c("site", "variable", "month"), lm_tidy, .parallel = T)
+save(PAR_monthly_lm, file = "data/PAR_monthly_lm.RData")
+
 
 # Spatial analyses --------------------------------------------------------
 
@@ -116,11 +131,11 @@ rm(PAR_kong_spatial_summary, PAR_is_spatial_summary, PAR_stor_spatial_summary,
    PAR_por_spatial_summary); gc()
 
 # Calculate p-values of linear models on annual bottom PAR as a full time series
-PAR_lm_annual <- PAR_spatial_summary |> 
+PAR_spatial_lm <- PAR_spatial_summary |> 
   dplyr::select(site, year, annual_perc) |>  distinct() |> 
   dplyr::rename(t = year, value = annual_perc) |> 
   plyr::ddply(c("site"), lm_tidy, .parallel = T)
-save(PAR_lm_annual, file = "data/PAR_lm_annual.RData")
+save(PAR_spatial_lm, file = "data/PAR_spatial_lm.RData")
 
 
 # P-functions -------------------------------------------------------------
@@ -130,12 +145,12 @@ registerDoParallel(cores = 15)
 
 # Get base for P-functions
 P_kong <- calc_p_function(PAR_kong, site_name = "kong")
-P_is <- calc_p_function(PAR_kong, site_name = "is")
-P_stor <- calc_p_function(PAR_kong, site_name = "stor")
-P_young <- calc_p_function(PAR_kong, site_name = "young")
-P_disko <- calc_p_function(PAR_kong, site_name = "disko")
-P_nuup <- calc_p_function(PAR_kong, site_name = "nuup")
-P_por <- calc_p_function(PAR_kong, site_name = "por")
+P_is <- calc_p_function(PAR_is, site_name = "is")
+P_stor <- calc_p_function(PAR_stor, site_name = "stor")
+P_young <- calc_p_function(PAR_young, site_name = "young")
+P_disko <- calc_p_function(PAR_disko, site_name = "disko")
+P_nuup <- calc_p_function(PAR_nuup, site_name = "nuup")
+P_por <- calc_p_function(PAR_por, site_name = "por")
 
 # Combine and save
 P_all <- rbind(P_kong, P_is, P_stor, P_young, P_disko, P_nuup, P_por)
