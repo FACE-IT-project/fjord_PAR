@@ -26,52 +26,6 @@ PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
 PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 
-# Prep --------------------------------------------------------------------
-
-# NB: Not currently run
-
-# Load trend data
-# load("data/PAR_kong_bottom_lm.RData")
-# PAR_kong_bottom_lm <- PAR_kong_bottom_lm |> 
-#   left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
-# load("data/PAR_kong_yearly_lm.RData")
-# PAR_kong_yearly_lm <- PAR_kong_yearly_lm |> 
-#   left_join(PAR_kong_global[,c("lon", "lat", "depth", "area")], by = c("lon", "lat"))
-
-# Address outliers for better plotting
-# PAR_kong_bottom_lm <- PAR_kong_bottom_lm |> 
-#   filter(!is.na(slope)) |>
-#   mutate(perc_01 = stats::quantile(slope, 0.01),
-#          perc_99 = stats::quantile(slope, 0.99),
-#          slope_fix = case_when(slope > perc_99 ~ perc_99,
-#                                slope < perc_01 ~ perc_01,
-#                                TRUE ~ slope))
-# PAR_kong_yearly_lm <- PAR_kong_yearly_lm |> 
-#   filter(!is.na(slope)) |>
-#   group_by(name) |> 
-#   mutate(perc_01 = stats::quantile(slope, 0.01),
-#          perc_99 = stats::quantile(slope, 0.99),
-#          slope_fix = case_when(slope > perc_99 ~ perc_99,
-#                                slope < perc_01 ~ perc_01,
-#                                TRUE ~ slope)) |> 
-#   ungroup()
-
-
-# Regions -----------------------------------------------------------------
-
-# NB: Not currently run
-
-# Merge and plot
-# kong_regions |> 
-#   left_join(PBglobal_regions, by = c("region")) |> 
-#   ggplot(aes(x = lon, y = lat)) +
-#   geom_polygon(aes(group = region, colour = region, fill = PARbottom_Global)) +
-#   geom_polygon(data = coastline_kong_wide, aes(group = polygon_id), colour = "grey20") +
-#   coord_quickmap(expand = F,
-#                  xlim = c(bbox_kong[1]-0.3, bbox_kong[2]+0.3), 
-#                  ylim = c(bbox_kong[3]-0.05, bbox_kong[4]+0.05))
-
-
 # Demo plots --------------------------------------------------------------
 
 # Global surface
@@ -510,6 +464,9 @@ ggsave(filename = "figures/fig_5.png", plot = fig_5, height = 8, width = 8)
 
 # Figure 6 ----------------------------------------------------------------
 # Changes to inhabitable area over time
+
+# TODO: Make left y-axis % availability and make it the same for all panels
+# Then make the right y-axis the overall area, but still scaled to all panels
 
 # Prep data for plotting
 PAR_spat_sum_comp <- PAR_spatial_summary |> 
