@@ -137,6 +137,11 @@ plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 # Figure 1 ----------------------------------------------------------------
 # Map of the study area + seven sites showing global surface PAR
 
+# TODO: Consider having a pop-out panel for Svalbard sites
+# https://cran.r-project.org/web/packages/ggautomap/vignettes/ggautomap.html
+# This would allow for the points to have large number labels to associate between panels
+
+
 # Extract global surface values
 PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "3col")
 PAR_global_is <- flget_climatology(PAR_is, optics = "PAR0m", period = "Global", mode = "3col")
@@ -248,6 +253,9 @@ ggsave("figures/fig_1.png", fig_1, height = 13, width = 10)
 # Load global p function data 
 # TODO: Change legend to show squares. 
 # There is some issue somewhere in the backend preventing the normal behaviour of the code.
+
+# TODO: Use this new package to provide better outlines for line graphs
+# https://cran.r-project.org/web/packages/ggblend/readme/README.html
 
 # Use built-in P-functions
 PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
