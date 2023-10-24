@@ -142,18 +142,18 @@ load_PAR <- function(site_name_short, depth_limit = -50){
   rm(PAR_YearlyPAR0m, PAR_Yearlykdpar, PAR_YearlyPARbottom); gc()
   
   # Load clim monthly values
-  PAR_MonthlyPAR0m <- filter_3D_cube("MonthlyPAR0m", file_name, depth_no_mask)
-  PAR_Monthlykdpar <- filter_3D_cube("Monthlykdpar", file_name, depth_no_mask)
-  PAR_MonthlyPARbottom <- filter_3D_cube("MonthlyPARbottom", file_name, depth_no_mask)
-  PAR_clim <- left_join(PAR_MonthlyPAR0m, PAR_Monthlykdpar, by = c("lon", "lat", "depth", "area", "date")) |> 
+  PAR_ClimPAR0m <- filter_3D_cube("ClimPAR0m", file_name, depth_no_mask)
+  PAR_ClimKpar <- filter_3D_cube("ClimKpar", file_name, depth_no_mask)
+  PAR_ClimPARbottom <- filter_3D_cube("ClimPARbottom", file_name, depth_no_mask)
+  PAR_clim <- left_join(PAR_ClimPAR0m, PAR_ClimKpar, by = c("lon", "lat", "depth", "area", "date")) |> 
     left_join(PAR_MonthlyPARbottom, by = c("lon", "lat", "depth", "area", "date")) |> rename(month = date)
-  rm(PAR_MonthlyPAR0m, PAR_Monthlykdpar, PAR_MonthlyPARbottom); gc()
+  rm(PAR_ClimPAR0m, PAR_ClimKpar, PAR_ClimPARbottom); gc()
   
   # Load monthly bottom data
   # NB: Some datasets are too beefy to load on many cores in parallel
   registerDoParallel(cores = 5)
   PAR_monthly <- plyr::ldply(1:20, filter_4D_cube, .parallel = T,
-                            file_name = file_name, var_name = "PARbottom", depth_mask = depth_limit_mask)
+                            file_name = file_name, var_name = "MonthlyPARbottom", depth_mask = depth_limit_mask)
     
   # Merge all
   PAR_list <- list(PAR_global = PAR_global,
@@ -351,8 +351,8 @@ calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
   
   # Calculate clim P-functions
   PAR_clim <- PAR_list$PAR_clim |> 
-    pivot_longer(MonthlyPAR0m:MonthlyPARbottom) |> 
-    filter(name == "MonthlyPARbottom", depth >= depth_limit)
+    pivot_longer(ClimPAR0m:ClimPARbottom) |> 
+    filter(name == "ClimPARbottom", depth >= depth_limit)
   PAR_clim_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
                             PAR_df = PAR_clim, bot_area = bottom_area$total) |> 
     dplyr::rename(clim_area = limit_area, clim_perc = limit_perc)
@@ -360,7 +360,7 @@ calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
   # Calculate clim P-functions
   PAR_monthly <- PAR_list$PAR_monthly |> 
     pivot_longer(PARbottom) |> 
-    filter(name == "PARbottom", depth >= depth_limit)
+    filter(name == "MonthlyPARbottom", depth >= depth_limit)
   PAR_monthly_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
                                PAR_df = PAR_monthly, bot_area = bottom_area$total) |> 
     dplyr::rename(monthly_area = limit_area, monthly_perc = limit_perc)
@@ -393,7 +393,7 @@ points_in_region <- function(region_in, bbox_df, data_df){
 }
 
 # Plots global surface, monthly clim, and annual surface PAR values with full range to highlight artefacts
-plot_surface <- function(site_short){
+plot_surface <- function(site_short, bathy_opt = "s"){
   
   # Load all data except monthly bottom PAR
   file_name <- paste0("data/PAR/",site_short,".nc")
@@ -405,7 +405,7 @@ plot_surface <- function(site_short){
   # Get bathymetry
   PAR_area <- flget_area(PAR_list, mode = "3col") |> 
     dplyr::rename(lon = longitude, lat = latitude, area = PixArea_km2)
-  PAR_bathy <- flget_bathymetry(PAR_list, what = "s", mode = "3col") |> 
+  PAR_bathy <- flget_bathymetry(PAR_list, what = bathy_opt, mode = "3col") |> 
     dplyr::rename(lon = longitude, lat = latitude) |> filter(!is.na(depth)) |> 
     left_join(PAR_area, by = c("lon", "lat"))
   
@@ -419,9 +419,9 @@ plot_surface <- function(site_short){
     theme(panel.border = element_rect(color = "black", fill = NA))
   
   # Monthly clim surface
-  PAR_MonthlyPAR0m <- filter_3D_cube("MonthlyPAR0m", file_name, PAR_bathy)
-  surf_clim <- ggplot(data = PAR_MonthlyPAR0m, aes(x = lon, y = lat)) +
-    geom_raster(aes(fill = MonthlyPAR0m)) + scale_fill_viridis_c() +
+  PAR_ClimPAR0m <- filter_3D_cube("ClimPAR0m", file_name, PAR_bathy)
+  surf_clim <- ggplot(data = PAR_ClimPAR0m, aes(x = lon, y = lat)) +
+    geom_raster(aes(fill = ClimPAR0m)) + scale_fill_viridis_c() +
     coord_quickmap(expand = FALSE) + 
     labs(x = NULL, y = NULL, fill = "PAR\n[mol m-2 d-1]", title = "Monthly Clim Surface PAR") +
     facet_wrap(~date) +
@@ -441,7 +441,7 @@ plot_surface <- function(site_short){
                                 ncol = 1, nrow = 3, heights = c(1.1, 1.17, 0.97))
   ggsave(paste0("metadata/surface_PAR_", site_short,".png"), surf_ALL,  width = 17, height = 40)
   # rm(site_short, file_name, PAR_list, PAR_area, PAR_bathy,
-  #    PAR_global, PAR_MonthlyPAR0m, PAR_YearlyPAR0m, surf_global, surf_clim, surf_ann, surf_ALL)
+  #    PAR_global, PAR_ClimPAR0m, PAR_YearlyPAR0m, surf_global, surf_clim, surf_ann, surf_ALL)
 }
 
 # Convenience wrapper for Figure 1 subplots
