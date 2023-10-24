@@ -137,6 +137,11 @@ plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 # Figure 1 ----------------------------------------------------------------
 # Map of the study area + seven sites showing global surface PAR
 
+# TODO: Consider having a pop-out panel for Svalbard sites
+# https://cran.r-project.org/web/packages/ggautomap/vignettes/ggautomap.html
+# This would allow for the points to have large number labels to associate between panels
+
+
 # Extract global surface values
 PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "3col")
 PAR_global_is <- flget_climatology(PAR_is, optics = "PAR0m", period = "Global", mode = "3col")
@@ -248,6 +253,9 @@ ggsave("figures/fig_1.png", fig_1, height = 13, width = 10)
 # Load global p function data 
 # TODO: Change legend to show squares. 
 # There is some issue somewhere in the backend preventing the normal behaviour of the code.
+
+# TODO: Use this new package to provide better outlines for line graphs
+# https://cran.r-project.org/web/packages/ggblend/readme/README.html
 
 # Use built-in P-functions
 PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
@@ -400,7 +408,7 @@ fig_4b <- PAR_annual_summary |>
 fig_4 <- ggpubr::ggarrange(fig_4a, fig_4b, align = "hv", 
                             common.legend = T, legend = "bottom",
                             labels = c("A)", "B)"), ncol = 1, nrow = 2)
-fig_4 <- ggpubr::annotate_figure(fig_4, top = ggpubr::text_grob("Annual medians values per site", 
+fig_4 <- ggpubr::annotate_figure(fig_4, top = ggpubr::text_grob("Median annual values per site", 
                                                                   color = "black", face = "bold", size = 14)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
 ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 12, width = 8)
@@ -463,7 +471,7 @@ fig_6 <- PAR_spatial_summary_site |>
   scale_y_continuous(limits = c(0, 100), breaks = c(10, 30, 50, 70, 90)) +
   scale_colour_manual("Site", values = site_colours) +
   labs(x = NULL, y = latex2exp::TeX("Spatial availability [% of shallow area]")) +
-  theme(legend.position = "none",
+  theme(legend.position = "bottom",
         legend.margin = margin(5, 20, 5, 5),
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
@@ -493,9 +501,10 @@ fig_S1 <- ggplot(PAR_p_clim, aes(x = irradianceLevel, y = MonthlyPfunction)) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
                      breaks = c(1, 0.1, 0.01), labels = c(1, 0.1, 0.01)) +
   scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
-  scale_colour_viridis_d(option = "A") +
+  scale_colour_viridis_d("Month", option = "A") +
   facet_wrap(~site, nrow = 3, ncol = 3) +
-  labs(x = "mol photons m-2 day-1", y = "% of surface receiving value [x-axis]", colour = "Month") +
+  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
+       y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
   theme(legend.position = c(0.65, 0.16), 
         legend.direction = "horizontal",
         legend.title = element_text(colour = "black", size = 12),
@@ -529,9 +538,10 @@ fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPfunction)) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
                      breaks = c(1, 0.1, 0.01), labels = c(1, 0.1, 0.01)) +
   scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
-  scale_colour_viridis_c(option = "D") +
+  scale_colour_viridis_c("Year", option = "D") +
   facet_wrap(~site, nrow = 3, ncol = 3) +
-  labs(x = "mol photons m-2 day-1", y = "% of surface receiving value [x-axis]", colour = "Year") +
+  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
+       y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
   theme(legend.position = c(0.65, 0.16),
         legend.direction = "horizontal",
         legend.key.width = unit(1, "cm"),
@@ -573,22 +583,17 @@ ggsave("figures/fig_S2.png", fig_S2, height = 6, width = 8)
 # Changes to inhabitable area over time by site
 
 # Create table of lowest values
-PAR_spat_low <- PAR_spatial_summary_site |> 
+PAR_spat_low <- PAR_spatial_summary |> 
   group_by(site) |> filter(annual_perc == min(annual_perc)) |> ungroup() |> 
   pivot_wider(names_from = year, values_from = annual_perc)
 
 # Create table of highest values
-PAR_spat_high <- PAR_spatial_summary_site |> 
+PAR_spat_high <- PAR_spatial_summary |> 
   group_by(site) |> filter(annual_perc == max(annual_perc)) |> ungroup() |> 
   pivot_wider(names_from = year, values_from = annual_perc)
 
-# Columns show sites
-# Rows show:
-## Total inhabitable area >= 50 m depth
-## Lowest perent cover
-## Highest perent cover
-## Slope
-## R2
-## p-value
-
+# Trends and p-values
+PAR_spat_lm <- PAR_spatial_lm |> dplyr::select(-std.error) |> 
+  mutate(slope = round(slope*100, 2),
+         p.value = round(p.value, 2))
 
