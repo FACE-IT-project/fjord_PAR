@@ -10,7 +10,7 @@ source("code/0_functions.R")
 # Load data ---------------------------------------------------------------
 
 # This loads bathymetry, pixel area, and all forms of PAR and Kd
-# NB: Only run one line at a time, this takes ~15 minutes and ~100 GB of RAM
+# NB: Only run one line at a time, this takes ~10 minutes and ~50 GB of RAM
 PAR_kong <- load_PAR("kong")
 PAR_is <- load_PAR("is")
 PAR_stor <- load_PAR("stor")
@@ -61,7 +61,7 @@ PAR_annual_lm <- PAR_annual_summary |>
 save(PAR_annual_lm, file = "data/PAR_annual_lm.RData")
 
 
-# Monthly clim analyses ---------------------------------------------------
+# Clim analyses -----------------------------------------------------------
 
 # Get range of summary states per time step
 PAR_kong_clim_summary <- PAR_summarise(PAR_kong$PAR_clim, "kong")
@@ -140,10 +140,10 @@ save(PAR_spatial_lm, file = "data/PAR_spatial_lm.RData")
 
 # P-functions -------------------------------------------------------------
 
-# Want a lot of cores for these calculations
-registerDoParallel(cores = 15)
+# NB: Not re-run on new data as this appears to be deprecated
 
 # Get base for P-functions
+## NB: Run one at a time
 P_kong <- calc_p_function(PAR_kong, site_name = "kong")
 P_is <- calc_p_function(PAR_is, site_name = "is")
 P_stor <- calc_p_function(PAR_stor, site_name = "stor")

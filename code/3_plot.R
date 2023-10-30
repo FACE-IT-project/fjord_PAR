@@ -139,7 +139,7 @@ kong_p_plot <- ggpubr::ggarrange(kong_p_monthly_plot, kong_p_yearly_plot,
                                  ncol = 2, nrow = 1, labels = c("A)", "B)"), align = "hv")
 ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
 
-# Create plots that help investigate artefacts
+# Create plots (and csv files) that help investigate artefacts
 plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 
 
