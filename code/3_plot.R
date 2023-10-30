@@ -20,7 +20,7 @@ library(ggOceanMaps)
 library(ggspatial)
 
 # Load processed data from '2_analyse.R'
-load("data/P_all.RData")
+# load("data/P_all.RData") # Deprecated
 load("data/PAR_annual_summary.RData")
 load("data/PAR_clim_summary.RData")
 load("data/PAR_monthly_summary.RData")
@@ -28,16 +28,6 @@ load("data/PAR_spatial_summary.RData")
 load("data/PAR_annual_lm.RData")
 load("data/PAR_monthly_lm.RData")
 load("data/PAR_spatial_lm.RData")
-
-# Load base data
-# NB: Only used for Figure 1
-PAR_kong <- fl_LoadFjord("kong", "data/PAR")
-PAR_is <- fl_LoadFjord("is", "data/PAR")
-PAR_stor <- fl_LoadFjord("stor", "data/PAR")
-PAR_young <- fl_LoadFjord("young", "data/PAR")
-PAR_disko <- fl_LoadFjord("disko", "data/PAR")
-PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
-PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 
 # Demo plots --------------------------------------------------------------
@@ -150,6 +140,16 @@ plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 # https://cran.r-project.org/web/packages/ggautomap/vignettes/ggautomap.html
 # This would allow for the points to have large number labels to associate between panels
 
+
+# Load base data
+# NB: Only used for Figure 1
+PAR_kong <- fl_LoadFjord("kong", "data/PAR")
+PAR_is <- fl_LoadFjord("is", "data/PAR")
+PAR_stor <- fl_LoadFjord("stor", "data/PAR")
+PAR_young <- fl_LoadFjord("young", "data/PAR")
+PAR_disko <- fl_LoadFjord("disko", "data/PAR")
+PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
+PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 # Extract global surface values
 PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "3col")
@@ -419,9 +419,9 @@ ggsave(filename = "figures/fig_4.png", plot = fig_5, height = 8, width = 8)
 # Use built-in P-functions
 PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
 
-# Or those calculated manually
-P_all_site <- left_join(P_all, long_site_names, by = "site") |>
-  dplyr::select(-site) |>  dplyr::rename(site = site_long)
+# Or those calculated manually - deprecated
+# P_all_site <- left_join(P_all, long_site_names, by = "site") |>
+#   dplyr::select(-site) |>  dplyr::rename(site = site_long)
 
 # Yearly p functions
 fig_5 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPfunction)) +
@@ -451,13 +451,13 @@ fig_5
 
 # Add title
 # NB: Consider adding the depth limit used e.g. 200 or 50
-fig_5 <- ggpubr::annotate_figure(fig_2, top = ggpubr::text_grob("Global average P-functions per site",
+fig_5 <- ggpubr::annotate_figure(fig_5, top = ggpubr::text_grob("Global average P-functions per site",
                                                                 color = "black", face = "bold", size = 14)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
 # fig_5
 
 # Save
-ggsave("figures/fig_5.png", fig_2, height = 6, width = 8)
+ggsave("figures/fig_5.png", fig_5, height = 6, width = 8)
 
 
 # Figure 6 ----------------------------------------------------------------
@@ -592,20 +592,42 @@ PAR_monthly_lm
 # Table 4 -----------------------------------------------------------------
 # Changes to inhabitable area over time by site
 
+# Round for table
+PAR_spatial_summary_round <- PAR_spatial_summary |> 
+  mutate(bottom_area = round(bottom_area),
+         global_area = round(global_area),
+         global_perc = round(global_perc, 2),
+         annual_area = round(annual_area),
+         annual_perc = round(annual_perc, 2)) |> 
+  dplyr::select(site, year, bottom_area, 
+                global_area, global_perc, annual_area, annual_perc)
+
+# Base values
+PAR_spat_base <- PAR_spatial_summary_round |> 
+  dplyr::select(site, bottom_area, global_perc) |> distinct()
+
 # Create table of lowest values
-PAR_spat_low <- PAR_spatial_summary |> 
-  group_by(site) |> filter(annual_perc == min(annual_perc)) |> ungroup() |> 
-  pivot_wider(names_from = year, values_from = annual_perc)
+PAR_spat_low <- PAR_spatial_summary_round |> 
+  group_by(site) |> filter(annual_perc == min(annual_perc)) |>
+  filter(year == min(year)) |> ungroup() |> 
+  dplyr::select(site, year, annual_perc) |> 
+  dplyr::rename(min_year = year, min_annual_perc = annual_perc)
 
 # Create table of highest values
-PAR_spat_high <- PAR_spatial_summary |> 
-  group_by(site) |> filter(annual_perc == max(annual_perc)) |> ungroup() |> 
-  pivot_wider(names_from = year, values_from = annual_perc)
+PAR_spat_high <- PAR_spatial_summary_round |> 
+  group_by(site) |> filter(annual_perc == max(annual_perc)) |>
+  filter(year == max(year)) |> ungroup() |> 
+  dplyr::select(site, year, annual_perc) |> 
+  dplyr::rename(max_year = year, max_annual_perc = annual_perc)
 
 # Trends and p-values
 PAR_spat_lm <- PAR_spatial_lm |> dplyr::select(-std.error) |> 
   mutate(slope = round(slope*100, 2),
          p.value = round(p.value, 2))
+
+# Combine
+table4 <- left_join(PAR_spat_base, PAR_spat_low, by = "site") |> 
+  left_join(PAR_spat_high, by = "site") |> left_join(PAR_spat_lm, by = "site")
 
 
 # Table 5 -----------------------------------------------------------------
