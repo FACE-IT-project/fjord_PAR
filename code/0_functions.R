@@ -125,7 +125,7 @@ load_PAR <- function(site_name_short, depth_limit = -50){
   
   # Load global surface data
   PAR_global <- tidync(file_name) |> activate("D0,D1") |>  
-    hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude, depth = bathymetry) |> 
+    hyper_tibble() |> dplyr::rename(lon = longitude, lat = latitude) |> 
     dplyr::select(lon, lat, depth, area, everything()) |> 
     filter(!is.na(depth))
   
@@ -135,18 +135,18 @@ load_PAR <- function(site_name_short, depth_limit = -50){
   
   # Load annual values
   PAR_YearlyPAR0m <- filter_3D_cube("YearlyPAR0m", file_name, depth_no_mask)
-  PAR_Yearlykdpar <- filter_3D_cube("Yearlykdpar", file_name, depth_no_mask)
+  PAR_YearlyKpar <- filter_3D_cube("YearlyKpar", file_name, depth_no_mask)
   PAR_YearlyPARbottom <- filter_3D_cube("YearlyPARbottom", file_name, depth_no_mask)
-  PAR_annual <- left_join(PAR_YearlyPAR0m, PAR_Yearlykdpar, by = c("lon", "lat", "depth", "area", "date")) |> 
+  PAR_annual <- left_join(PAR_YearlyPAR0m, PAR_YearlyKpar, by = c("lon", "lat", "depth", "area", "date")) |> 
     left_join(PAR_YearlyPARbottom, by = c("lon", "lat", "depth", "area", "date")) |> rename(year = date)
-  rm(PAR_YearlyPAR0m, PAR_Yearlykdpar, PAR_YearlyPARbottom); gc()
+  rm(PAR_YearlyPAR0m, PAR_YearlyKpar, PAR_YearlyPARbottom); gc()
   
   # Load clim monthly values
   PAR_ClimPAR0m <- filter_3D_cube("ClimPAR0m", file_name, depth_no_mask)
   PAR_ClimKpar <- filter_3D_cube("ClimKpar", file_name, depth_no_mask)
   PAR_ClimPARbottom <- filter_3D_cube("ClimPARbottom", file_name, depth_no_mask)
   PAR_clim <- left_join(PAR_ClimPAR0m, PAR_ClimKpar, by = c("lon", "lat", "depth", "area", "date")) |> 
-    left_join(PAR_MonthlyPARbottom, by = c("lon", "lat", "depth", "area", "date")) |> rename(month = date)
+    left_join(PAR_ClimPARbottom, by = c("lon", "lat", "depth", "area", "date")) |> rename(month = date)
   rm(PAR_ClimPAR0m, PAR_ClimKpar, PAR_ClimPARbottom); gc()
   
   # Load monthly bottom data
@@ -163,7 +163,7 @@ load_PAR <- function(site_name_short, depth_limit = -50){
   
   # Exit
   return(PAR_list)
-  # rm(file_name, depth_limit, depth_mask, PAR_global, PAR_annual, PAR_clim, PAR_monthly, PAR_list)
+  # rm(file_name, depth_limit_mask, depth_no_mask, PAR_global, PAR_annual, PAR_clim, PAR_monthly, PAR_list)
 }
 
 # Takes site short name and returns the local or pCloud location of the PAR NetCDF
@@ -333,8 +333,9 @@ calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
   p_seq <- c(seq(0.001, 0.009, 0.001), seq(0.01, 0.09, 0.01), seq(0.1, 0.9, 0.1), seq(1, 10, 1))
   
   # Calculate global P-functions
+  registerDoParallel(cores = 15)
   PAR_global <- PAR_list$PAR_global |> 
-    pivot_longer(GlobalPARbottom:Globalkdpar) |> 
+    pivot_longer(GlobalPARbottom:GlobalKpar) |> 
     filter(name == "GlobalPARbottom", depth >= depth_limit)
   PAR_global_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
                               PAR_df = PAR_global, bot_area = bottom_area$total) |> 
@@ -342,6 +343,7 @@ calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
     dplyr::select(-global)
  
   # Calculate annual P-functions
+  registerDoParallel(cores = 15)
   PAR_annual <- PAR_list$PAR_annual |> 
     pivot_longer(YearlyPAR0m:YearlyPARbottom) |> 
     filter(name == "YearlyPARbottom", depth >= depth_limit)
@@ -350,6 +352,7 @@ calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
     dplyr::rename(yearly_area = limit_area, yearly_perc = limit_perc)
   
   # Calculate clim P-functions
+  registerDoParallel(cores = 15)
   PAR_clim <- PAR_list$PAR_clim |> 
     pivot_longer(ClimPAR0m:ClimPARbottom) |> 
     filter(name == "ClimPARbottom", depth >= depth_limit)
@@ -357,9 +360,10 @@ calc_p_function <- function(PAR_list, depth_limit = -50, site_name){
                             PAR_df = PAR_clim, bot_area = bottom_area$total) |> 
     dplyr::rename(clim_area = limit_area, clim_perc = limit_perc)
   
-  # Calculate clim P-functions
+  # Calculate monthly P-functions
+  registerDoParallel(cores = 5)
   PAR_monthly <- PAR_list$PAR_monthly |> 
-    pivot_longer(PARbottom) |> 
+    pivot_longer(MonthlyPARbottom) |> 
     filter(name == "MonthlyPARbottom", depth >= depth_limit)
   PAR_monthly_p <- plyr::ldply(p_seq, calc_p_step, .parallel = T,
                                PAR_df = PAR_monthly, bot_area = bottom_area$total) |> 
@@ -393,7 +397,7 @@ points_in_region <- function(region_in, bbox_df, data_df){
 }
 
 # Plots global surface, monthly clim, and annual surface PAR values with full range to highlight artefacts
-plot_surface <- function(site_short, bathy_opt = "s"){
+plot_surface <- function(site_short, bathy_opt = "c"){
   
   # Load all data except monthly bottom PAR
   file_name <- paste0("data/PAR/",site_short,".nc")
@@ -436,10 +440,27 @@ plot_surface <- function(site_short, bathy_opt = "s"){
     facet_wrap(~date) +
     theme(panel.border = element_rect(color = "black", fill = NA))
   
+  # Save .CSV files of the lon/lat for suspicious pixels
+  if(site_short %in% c("disko", "nuup", "por")) {
+    filter_months <- 5:7
+  } else {
+    filter_months <- 6:7
+  }
+  ex_PAR_global <- filter(PAR_global, PAR0m_Global > 30) |> 
+    dplyr::rename(value = PAR0m_Global) |> 
+    mutate(var = "PAR0m_Global", date = as.numeric(NA))
+  ex_PAR_Clim <- filter(PAR_ClimPAR0m, ClimPAR0m > 30, !date %in% filter_months) |> 
+    dplyr::rename(value = ClimPAR0m) |> mutate(var = "YearlyPAR0m")
+  ex_PAR_Yearly <- filter(PAR_YearlyPAR0m, YearlyPAR0m > 30) |> 
+    dplyr::rename(value = YearlyPAR0m) |> mutate(var = "YearlyPAR0m")
+  ex_PAR <- bind_rows(ex_PAR_global, ex_PAR_Clim, ex_PAR_Yearly) |> 
+    dplyr::select(lon, lat, depth, date, var, value)
+  write_csv(ex_PAR, paste0("metadata/ex_PAR_",site_short,".csv"))
+  
   # Combine and save
   surf_ALL <- ggpubr::ggarrange(surf_global, surf_clim, surf_ann,
                                 ncol = 1, nrow = 3, heights = c(1.1, 1.17, 0.97))
-  ggsave(paste0("metadata/surface_PAR_", site_short,".png"), surf_ALL,  width = 17, height = 40)
+  ggsave(paste0("metadata/surface_PAR_",site_short,".png"), surf_ALL,  width = 17, height = 40)
   # rm(site_short, file_name, PAR_list, PAR_area, PAR_bathy,
   #    PAR_global, PAR_ClimPAR0m, PAR_YearlyPAR0m, surf_global, surf_clim, surf_ann, surf_ALL)
 }
