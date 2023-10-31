@@ -478,7 +478,9 @@ fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
   
   ggplot(data = PAR_df, aes(x = longitude, y = latitude)) +
     # NB: Ignore geom_raster warning because geom_tile looks bad
-    geom_raster(aes(fill = PAR0m_Global)) + scale_fill_viridis_c(limits = PAR_limits) +
+    geom_raster(aes(fill = PAR0m_Global)) + 
+    # scale_fill_viridis_c() +
+    scale_fill_viridis_c(limits = PAR_limits) +
     coord_quickmap(expand = FALSE) + 
     labs(x = NULL, y = NULL, fill = latex2exp::TeX("PAR($0^-$)\n[mol photons $m^{-2}$ $d^{-1}$]"), title = panel_title) +
     theme(legend.position = "none", # Remove legend
