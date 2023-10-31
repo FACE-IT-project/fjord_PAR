@@ -608,22 +608,36 @@ PAR_spatial_summary_round <- PAR_spatial_summary |>
          global_area = round(global_area),
          global_perc = round(global_perc, 2),
          annual_area = round(annual_area),
-         annual_perc = round(annual_perc, 2))
+         annual_perc = round(annual_perc, 2)) |> 
+  dplyr::select(site, year, bottom_area, 
+                global_area, global_perc, annual_area, annual_perc)
+
+# Base values
+PAR_spat_base <- PAR_spatial_summary_round |> 
+  dplyr::select(site, bottom_area, global_perc) |> distinct()
 
 # Create table of lowest values
 PAR_spat_low <- PAR_spatial_summary_round |> 
-  group_by(site) |> filter(annual_perc == min(annual_perc)) |> ungroup() |> 
-  pivot_wider(names_from = year, values_from = annual_perc)
+  group_by(site) |> filter(annual_perc == min(annual_perc)) |>
+  filter(year == min(year)) |> ungroup() |> 
+  dplyr::select(site, year, annual_perc) |> 
+  dplyr::rename(min_year = year, min_annual_perc = annual_perc)
 
 # Create table of highest values
 PAR_spat_high <- PAR_spatial_summary_round |> 
-  group_by(site) |> filter(annual_perc == max(annual_perc)) |> ungroup() |> 
-  pivot_wider(names_from = year, values_from = annual_perc)
+  group_by(site) |> filter(annual_perc == max(annual_perc)) |>
+  filter(year == max(year)) |> ungroup() |> 
+  dplyr::select(site, year, annual_perc) |> 
+  dplyr::rename(max_year = year, max_annual_perc = annual_perc)
 
 # Trends and p-values
 PAR_spat_lm <- PAR_spatial_lm |> dplyr::select(-std.error) |> 
   mutate(slope = round(slope*100, 2),
          p.value = round(p.value, 2))
+
+# Combine
+table4 <- left_join(PAR_spat_base, PAR_spat_low, by = "site") |> 
+  left_join(PAR_spat_high, by = "site") |> left_join(PAR_spat_lm, by = "site")
 
 
 # Table 5 -----------------------------------------------------------------
