@@ -2,8 +2,7 @@
 # Create the figures/tables used in the manuscript
 # Also contains code for exploratory visualisations
 
-# TODO: Remove all titles from the figures.
-# Add letters inside of Figure 1A points
+# TODO: Fix legend text spacing for all figures
 
 
 # Setup -------------------------------------------------------------------
@@ -12,6 +11,7 @@
 source("code/0_functions.R")
 library(ggOceanMaps)
 library(ggspatial)
+library(ggblend) # allows drawing under lines
 
 # Load processed data from '2_analyse.R'
 # load("data/P_all.RData") # Deprecated
@@ -130,10 +130,10 @@ plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 # Figure 1 ----------------------------------------------------------------
 # Map of the study area + seven sites showing global surface PAR
 
-# TODO: Consider having a pop-out panel for Svalbard sites
+# Consider having a pop-out panel for Svalbard sites:
 # https://cran.r-project.org/web/packages/ggautomap/vignettes/ggautomap.html
 # This would allow for the points to have large number labels to associate between panels
-
+# Unfortunately, how to get this to work with the output of ggoceanmaps is not readily clear
 
 # Load base data
 # NB: Only used for Figure 1
@@ -168,13 +168,13 @@ site_points <- data.frame(site = factor(x = c("Kongsfjorden", "Isfjorden", "Stor
                                         levels = c("Kongsfjorden", "Isfjorden","Storfjorden", 
                                                    "Young Sound", "Qeqertarsuup Tunua", "Nuup Kangerlua", 
                                                    "Porsangerfjorden")),
+                          point_text = c("B", "C", "D", "E", "F", "G", "H"),
                           label = c("B)", "C)", "D)", "E)", "F)", "G)", "H)"),
                           lon = c(11.845, 14.365, 19.88, -21.237, -52.555, -50.625, 25.75),
                           lat = c(78.98, 78.235, 77.78, 74.517, 69.36, 64.405, 70.6))
 
 # Full study area
-# TODO: Fix bathymetry legend spacing once final shape has been established
-fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
+fig_1_base <- basemap(limits = c(-60, 30, 65, 90), bathymetry = T) +
   # Other labels
   geom_spatial_label(aes(x = 27, y = 79, label = "Svalbard"), 
                      colour = "black", crs = 4326, size = 4, alpha = 0.5) +
@@ -186,23 +186,26 @@ fig_1_base <- basemap(limits = c(-50, 50, 61, 90), bathymetry = T) +
                      colour = "black", crs = 4326, size = 4, alpha = 0.5) +
   geom_spatial_label(aes(x = -40, y = 76, label = "Greenland"), 
                      colour = "black", crs = 4326, size = 4, alpha = 0.5) +
-  geom_spatial_label(aes(x = 19, y = 70.5, label = "Northern\nNorway"), 
+  geom_spatial_label(aes(x = 24, y = 68, label = "Northern\nNorway"), 
                      colour = "black", crs = 4326, size = 4, alpha = 0.5) +
   # Site points
-  geom_spatial_point(data = site_points, size = 6, crs = 4326,
+  geom_spatial_point(data = site_points, size = 7, crs = 4326,
                      aes(x = lon, y = lat), colour = "black") +
-  geom_spatial_point(data = site_points, size = 5, crs = 4326,
+  geom_spatial_point(data = site_points, size = 6, crs = 4326,
                      aes(x = lon, y = lat, colour = site)) +
+  geom_spatial_text(data = site_points, size = 5, crs = 4326,
+                     aes(x = lon, y = lat, label = point_text)) +
   scale_colour_manual("Site", values = site_colours) +
   # Other minutia
   labs(x = NULL, y = NULL) +
-  guides(colour = "none") + 
+  guides(colour = "none", fill = guide_legend(title.hjust = 1)) + 
   theme(panel.border = element_rect(colour = "black", fill = NA),
         panel.background = element_rect(fill = NA, colour = "black"),
         plot.background = element_rect(fill = "white", colour = NA),
         axis.text = element_text(colour = "black", size = 10),
-        legend.position = c(0.93, 0.21),
-        legend.box.margin = margin(10, 10, 10, 10), 
+        legend.direction = "horizontal",
+        legend.position = c(0.28, 0.932),
+        legend.box.margin = margin(5, 20, 5, 10), 
         legend.box.background = element_rect(fill = "white", colour = "black"))
 # fig_1_base
 
@@ -232,7 +235,7 @@ PAR_legend_base <- PAR_global_kong %>%
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14),
         legend.box.background = element_rect(fill = NA, colour = NA))
-PAR_legend_base
+# PAR_legend_base
 PAR_legend <- ggpubr::get_legend(PAR_legend_base)
 
 # Placeholder
@@ -252,23 +255,24 @@ ggsave("figures/fig_1.png", fig_1, height = 13, width = 10)
 # Figure 2 ----------------------------------------------------------------
 # Line plot showing monthly climatological changes per site for surface values
 
-# TODO: Get legend text to not over plot itself
-
 # Surface clim
 fig_2a <- PAR_clim_summary |> 
   filter(variable == "ClimPAR0m") |> 
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = month, y = q50)) +
-  geom_line(aes(group = site_long), linewidth = 1.7) +
-  geom_line(aes(colour = site_long), linewidth = 1.2) +
+  # geom_line(aes(group = site_long), linewidth = 1.7) +
+  geom_line(aes(colour = site_long), linewidth = 1.2) |> 
+  copy_under(aes(group = site_long), color = "black", linewidth = 1.7) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL,
+  labs(x = "Month",
        y = latex2exp::TeX("PAR($0^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
+        legend.spacing.x = unit(0.3, "cm"),
         legend.box.background = element_rect(colour = "black", fill = "white"),
-        legend.box.margin = margin(2,15,2,2),
+        legend.box.margin = margin(2, 20, 2, 2),
+        # legend.text.align = 1,
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         plot.margin = margin(5, 20, 10, 5),
@@ -284,8 +288,8 @@ fig_2b <- PAR_clim_summary |>
   geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL,
-       y = latex2exp::TeX("K$_{PAR}$")) +
+  labs(x = "Month",
+       y = latex2exp::TeX("K$_{PAR}$ [$m^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
@@ -296,13 +300,11 @@ fig_2b <- PAR_clim_summary |>
 # fig_2b
 
 # Combine and save
-fig_2 <- ggpubr::ggarrange(fig_2a, fig_2b, align = "v", 
+fig_2 <- ggpubr::ggarrange(fig_2a, fig_2b, align = "hv", 
                            common.legend = T, legend = "bottom",
-                           labels = c("A)", "B)"), ncol = 1, nrow = 2)
-fig_2 <- ggpubr::annotate_figure(fig_2, top = ggpubr::text_grob("Median monthly climatology values per site", 
-                                                                color = "black", face = "bold", size = 14)) +
+                           labels = c("A)", "B)"), ncol = 1, nrow = 2) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave(filename = "figures/fig_2.png", plot = fig_3, height = 12, width = 8)
+ggsave(filename = "figures/fig_2.png", plot = fig_2, height = 12, width = 8)
 
 
 # Figure 3 ----------------------------------------------------------------
@@ -321,7 +323,7 @@ fig_3a <- PAR_annual_summary |>
   geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL, 
+  labs(x = "Year", 
        y = latex2exp::TeX("PAR($0^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
@@ -342,8 +344,8 @@ fig_3b <- PAR_annual_summary |>
   geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
-  labs(x = NULL,
-       y = latex2exp::TeX("K$_{PAR}$")) +
+  labs(x = "Year",
+       y = latex2exp::TeX("K$_{PAR}$ [$m^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
@@ -355,11 +357,9 @@ fig_3b <- PAR_annual_summary |>
 # Combine and save
 fig_3 <- ggpubr::ggarrange(fig_3a, fig_3b, align = "hv", 
                             common.legend = T, legend = "bottom",
-                            labels = c("A)", "B)"), ncol = 1, nrow = 2)
-fig_3 <- ggpubr::annotate_figure(fig_3, top = ggpubr::text_grob("Median annual values per site", 
-                                                                  color = "black", face = "bold", size = 14)) +
+                            labels = c("A)", "B)"), ncol = 1, nrow = 2)+
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave(filename = "figures/fig_3.png", plot = fig_4, height = 12, width = 8)
+ggsave(filename = "figures/fig_3.png", plot = fig_3, height = 12, width = 8)
 
 
 # Figure 4 ----------------------------------------------------------------
@@ -378,12 +378,12 @@ fig_4 <- PAR_monthly_summary |>
   geom_smooth(aes(colour = as.factor(month)), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
   geom_line(aes(group = as.factor(month)), linewidth = 1.5) +
   geom_line(aes(colour = as.factor(month)), linewidth = 1.0) +
-  facet_wrap(~site_long, scales = "free_y") +
+  facet_wrap(~site_long, nrow = 2, scales = "free_y") +
   scale_x_continuous(expand = c(0, 0)) +
   scale_fill_viridis_d("Month", option = "A", aesthetics = c("colour", "fill")) +
-  labs(x = NULL, y = latex2exp::TeX("PAR$_B$ [mol photons $m^{-2}$ d$^{-1}$]")) +
-  theme(legend.position = c(0.65, 0.17), 
-        legend.direction = "horizontal",
+  labs(x = "Year", y = latex2exp::TeX("PAR$_B$ [mol photons $m^{-2}$ d$^{-1}$]")) +
+  theme(legend.position = c(0.88, 0.21), 
+        legend.direction = "vertical",
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
@@ -392,11 +392,8 @@ fig_4 <- PAR_monthly_summary |>
         panel.border = element_rect(colour = "black", fill  = NA))
 # fig_4
 
-# Add title
-fig_4 <- ggpubr::annotate_figure(fig_4, top = ggpubr::text_grob("Monthly bottom PAR per site", 
-                                                                color = "black", face = "bold", size = 14)) +
-  ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave(filename = "figures/fig_4.png", plot = fig_5, height = 8, width = 8)
+# Save
+ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 5, width = 10)
 
 
 # Figure 5 ----------------------------------------------------------------
@@ -418,21 +415,20 @@ PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
 #   dplyr::select(-site) |>  dplyr::rename(site = site_long)
 
 # Yearly p functions
-fig_5 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPfunction)) +
+fig_5 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPshallow)) +
 # fig_5 <- ggplot(P_all_site, aes(x = PAR_limit, y = global_perc*100)) +
   geom_line(aes(group = site), colour = "black", linewidth = 2.5) +
   geom_line(aes(colour = site), linewidth = 2) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0),
                      breaks = c(10, 1, 0.1, 0.01, 0.001),
                      labels = c(10, 1, 0.1, 0.01, 0.001)) + # Need to force these
-  scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
-  # scale_y_continuous(limits = c(0, 100), expand = c(0, 0), breaks = c(10, 30, 60, 90)) +
+  scale_y_continuous(limits = c(0, 100), expand = c(0, 0), breaks = c(10, 30, 60, 90)) +
   scale_colour_manual("Site", values = site_colours) +
   # guides(colour = guide_legend(override.aes = list(shape = 15, size = 5))) +
   # guides(colour = guide_legend(override.aes = list(shape = 18))) +
   labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
        y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
-  theme(legend.position = c(0.135, 0.798),
+  theme(legend.position = c(0.144, 0.805),
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
@@ -441,13 +437,6 @@ fig_5 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPfunction)) +
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
-fig_5
-
-# Add title
-# NB: Consider adding the depth limit used e.g. 200 or 50
-fig_5 <- ggpubr::annotate_figure(fig_5, top = ggpubr::text_grob("Global average P-functions per site",
-                                                                color = "black", face = "bold", size = 14)) +
-  ggpubr::bgcolor("white") + ggpubr::border("white")
 # fig_5
 
 # Save
@@ -461,30 +450,24 @@ ggsave("figures/fig_5.png", fig_5, height = 6, width = 8)
 PAR_p_clim <- plyr::ldply(long_site_names$site, load_p_clim, .parallel = T)
 
 # Yearly p functions
-fig_S1 <- ggplot(PAR_p_clim, aes(x = irradianceLevel, y = MonthlyPfunction)) +
-  geom_line(aes(group = as.factor(Months)), colour = "black", linewidth = 1.3) +
-  geom_line(aes(colour = as.factor(Months)), linewidth = 1.0) +
+fig_S1 <- ggplot(PAR_p_clim, aes(x = irradianceLevel, y = ClimPshallow)) +
+  geom_line(aes(group = as.factor(Months)), colour = "black", linewidth = 1.2) +
+  geom_line(aes(colour = as.factor(Months)), linewidth = 0.9) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
                      breaks = c(1, 0.1, 0.01), labels = c(1, 0.1, 0.01)) +
-  scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
+  scale_y_continuous(limits = c(0, 100), expand = c(0, 0), breaks = c(10, 30, 60, 90)) +
   scale_colour_viridis_d("Month", option = "A") +
-  facet_wrap(~site, nrow = 3, ncol = 3) +
+  facet_wrap(~site, nrow = 2, ncol = 4) +
   labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
        y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
-  theme(legend.position = c(0.65, 0.16), 
-        legend.direction = "horizontal",
+  theme(legend.position = c(0.88, 0.22), 
+        legend.direction = "vertical",
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
-# fig_S1
-
-# Add title
-fig_S1 <- ggpubr::annotate_figure(fig_S1, top = ggpubr::text_grob("Monthly climatology P-functions per site",
-                                                                color = "black", face = "bold", size = 14)) +
-  ggpubr::bgcolor("white") + ggpubr::border("white")
 # fig_S1
 
 # Save
@@ -498,18 +481,19 @@ ggsave("figures/fig_S1.png", fig_S1, height = 6, width = 8)
 PAR_p_annual <- plyr::ldply(long_site_names$site, load_p_annual, .parallel = T)
 
 # Yearly p functions
-fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPfunction)) +
-  geom_line(aes(group = Years), colour = "black", linewidth = 1.3) +
-  geom_line(aes(colour = Years, group = Years), linewidth = 1.0) +
+fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPshallow)) +
+  geom_line(aes(group = Years), colour = "black", linewidth = 1.0) +
+  geom_line(aes(colour = Years, group = Years), linewidth = 0.8) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0), 
                      breaks = c(1, 0.1, 0.01), labels = c(1, 0.1, 0.01)) +
-  scale_y_continuous(limits = c(0, 50), expand = c(0, 0), breaks = c(10, 20, 30, 40)) +
+  scale_y_continuous(limits = c(0, 100), expand = c(0, 0), breaks = c(10, 30, 60, 90)) +
   scale_colour_viridis_c("Year", option = "D") +
-  facet_wrap(~site, nrow = 3, ncol = 3) +
+  facet_wrap(~site, nrow = 2, ncol = 4) +
   labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
        y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
-  theme(legend.position = c(0.65, 0.16),
-        legend.direction = "horizontal",
+  # guides(colour = guide_legend()) +
+  theme(legend.position = c(0.88, 0.22),
+        legend.direction = "vertical",
         legend.key.width = unit(1, "cm"),
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
@@ -517,12 +501,6 @@ fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPfunction)) +
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
-# fig_S2
-
-# Add title
-fig_S2 <- ggpubr::annotate_figure(fig_S2, top = ggpubr::text_grob("Annual average P-functions per site",
-                                                                  color = "black", face = "bold", size = 14)) +
-  ggpubr::bgcolor("white") + ggpubr::border("white")
 # fig_S2
 
 # Save
