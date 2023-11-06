@@ -400,8 +400,8 @@ points_in_region <- function(region_in, bbox_df, data_df){
 plot_surface <- function(site_short, bathy_opt = "c"){
   
   # Load all data except monthly bottom PAR
-  file_name <- paste0("data/PAR/",site_short,".nc")
-  PAR_list <- fl_LoadFjord(site_short, "data/PAR")
+  file_name <- paste0("~/Downloads/",site_short,".nc")
+  PAR_list <- fl_LoadFjord(site_short, "~/Downloads/")
   
   # Get long site name
   # site_label <- filter(long_site_names, site == site_short)
@@ -460,7 +460,7 @@ plot_surface <- function(site_short, bathy_opt = "c"){
   # Combine and save
   surf_ALL <- ggpubr::ggarrange(surf_global, surf_clim, surf_ann,
                                 ncol = 1, nrow = 3, heights = c(1.1, 1.17, 0.97))
-  ggsave(paste0("metadata/surface_PAR_",site_short,".png"), surf_ALL,  width = 17, height = 40)
+  ggsave(paste0("metadata/surface_PAR_",site_short,"_new.png"), surf_ALL,  width = 17, height = 40)
   # rm(site_short, file_name, PAR_list, PAR_area, PAR_bathy,
   #    PAR_global, PAR_ClimPAR0m, PAR_YearlyPAR0m, surf_global, surf_clim, surf_ann, surf_ALL)
 }
