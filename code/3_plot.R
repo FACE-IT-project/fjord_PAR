@@ -198,7 +198,7 @@ fig_1_base <- basemap(limits = c(-60, 30, 65, 90), bathymetry = T) +
   scale_colour_manual("Site", values = site_colours) +
   # Other minutia
   labs(x = NULL, y = NULL) +
-  guides(colour = "none", fill = guide_legend(title.hjust = 1)) + 
+  guides(colour = "none", fill = guide_legend("Depth [m]", title.hjust = 1)) + 
   theme(panel.border = element_rect(colour = "black", fill = NA),
         panel.background = element_rect(fill = NA, colour = "black"),
         plot.background = element_rect(fill = "white", colour = NA),
@@ -426,7 +426,7 @@ fig_5 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPshallow)) +
   scale_colour_manual("Site", values = site_colours) +
   # guides(colour = guide_legend(override.aes = list(shape = 15, size = 5))) +
   # guides(colour = guide_legend(override.aes = list(shape = 18))) +
-  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
+  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $d^{-1}$]"),
        y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
   theme(legend.position = c(0.144, 0.805),
         legend.title = element_text(colour = "black", size = 12),
@@ -458,7 +458,7 @@ fig_S1 <- ggplot(PAR_p_clim, aes(x = irradianceLevel, y = ClimPshallow)) +
   scale_y_continuous(limits = c(0, 100), expand = c(0, 0), breaks = c(10, 30, 60, 90)) +
   scale_colour_viridis_d("Month", option = "A") +
   facet_wrap(~site, nrow = 2, ncol = 4) +
-  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
+  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $d^{-1}$]"),
        y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
   theme(legend.position = c(0.88, 0.22), 
         legend.direction = "vertical",
@@ -489,7 +489,7 @@ fig_S2 <- ggplot(PAR_p_annual, aes(x = irradianceLevel, y = YearlyPshallow)) +
   scale_y_continuous(limits = c(0, 100), expand = c(0, 0), breaks = c(10, 30, 60, 90)) +
   scale_colour_viridis_c("Year", option = "D") +
   facet_wrap(~site, nrow = 2, ncol = 4) +
-  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $day^{-1}$]"),
+  labs(x = latex2exp::TeX("$PAR_B$ Threshold [T; mol photons $m^{-2}$ $d^{-1}$]"),
        y = latex2exp::TeX("Cumulative area receiving $PAR_{B}$ $\\geq$ T [%]", bold = FALSE)) +
   # guides(colour = guide_legend()) +
   theme(legend.position = c(0.88, 0.22),
