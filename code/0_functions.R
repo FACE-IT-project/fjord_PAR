@@ -407,14 +407,14 @@ plot_surface <- function(site_short, bathy_opt = "c"){
   # site_label <- filter(long_site_names, site == site_short)
   
   # Get bathymetry
-  PAR_area <- flget_area(PAR_list, mode = "3col") |> 
+  PAR_area <- flget_area(PAR_list, mode = "df") |> 
     dplyr::rename(lon = longitude, lat = latitude, area = PixArea_km2)
-  PAR_bathy <- flget_bathymetry(PAR_list, what = bathy_opt, mode = "3col") |> 
+  PAR_bathy <- flget_bathymetry(PAR_list, what = bathy_opt, mode = "df") |> 
     dplyr::rename(lon = longitude, lat = latitude) |> filter(!is.na(depth)) |> 
     left_join(PAR_area, by = c("lon", "lat"))
   
   # Global surface
-  PAR_global <- flget_climatology(PAR_list, optics = "PAR0m", period = "Global", mode = "3col") |> 
+  PAR_global <- flget_climatology(PAR_list, optics = "PAR0m", period = "Global", mode = "df") |> 
     dplyr::rename(lon = longitude, lat = latitude) |> filter(!is.na(PAR0m_Global))
   surf_global <- ggplot(data = PAR_global, aes(x = lon, y = lat)) +
     geom_raster(aes(fill = PAR0m_Global)) + scale_fill_viridis_c() +

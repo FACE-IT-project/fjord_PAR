@@ -2,8 +2,6 @@
 # Create the figures/tables used in the manuscript
 # Also contains code for exploratory visualisations
 
-# TODO: Fix legend text spacing for all figures
-
 
 # Setup -------------------------------------------------------------------
 
@@ -146,13 +144,13 @@ PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
 PAR_por <- fl_LoadFjord("por", "data/PAR")
 
 # Extract global surface values
-PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "3col")
-PAR_global_is <- flget_climatology(PAR_is, optics = "PAR0m", period = "Global", mode = "3col")
-PAR_global_stor <- flget_climatology(PAR_stor, optics = "PAR0m", period = "Global", mode = "3col")
-PAR_global_young <- flget_climatology(PAR_young, optics = "PAR0m", period = "Global", mode = "3col")
-PAR_global_disko <- flget_climatology(PAR_disko, optics = "PAR0m", period = "Global", mode = "3col")
-PAR_global_nuup <- flget_climatology(PAR_nuup, optics = "PAR0m", period = "Global", mode = "3col")
-PAR_global_por <- flget_climatology(PAR_por, optics = "PAR0m", period = "Global", mode = "3col")
+PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "df")
+PAR_global_is <- flget_climatology(PAR_is, optics = "PAR0m", period = "Global", mode = "df")
+PAR_global_stor <- flget_climatology(PAR_stor, optics = "PAR0m", period = "Global", mode = "df")
+PAR_global_young <- flget_climatology(PAR_young, optics = "PAR0m", period = "Global", mode = "df")
+PAR_global_disko <- flget_climatology(PAR_disko, optics = "PAR0m", period = "Global", mode = "df")
+PAR_global_nuup <- flget_climatology(PAR_nuup, optics = "PAR0m", period = "Global", mode = "df")
+PAR_global_por <- flget_climatology(PAR_por, optics = "PAR0m", period = "Global", mode = "df")
 
 # Range of surface PAR values
 PAR_global <- c(PAR_global_kong, PAR_global_is, PAR_global_stor, 
@@ -219,7 +217,6 @@ fig_1_nuup <- fig_1_subplot(PAR_global_nuup, "Nuup Kangerlua", PAR_quant)
 fig_1_por <- fig_1_subplot(PAR_global_por, "Porsangerfjorden", PAR_quant)
 
 # Get legend
-# TODO: Get line break to work correctly
 PAR_legend_base <- PAR_global_kong %>% 
   mutate(x = 1:n(), y = 1) %>% 
   ggplot() + geom_point(aes(x = x, y = y, colour = PAR0m_Global)) +
@@ -400,13 +397,6 @@ ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 5, width = 10)
 # P-functions per site
 # Similar to how they are shown in the other two publications that came before
 
-# Load global p function data 
-# TODO: Change legend to show squares. 
-# There is some issue somewhere in the backend preventing the normal behaviour of the code.
-
-# TODO: Use this new package to provide better outlines for line graphs
-# https://cran.r-project.org/web/packages/ggblend/readme/README.html
-
 # Use built-in P-functions
 PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
 
@@ -416,7 +406,6 @@ PAR_p_global <- plyr::ldply(long_site_names$site, load_p_global, .parallel = T)
 
 # Yearly p functions
 fig_5 <- ggplot(PAR_p_global, aes(x = irradianceLevel, y = GlobalPshallow)) +
-# fig_5 <- ggplot(P_all_site, aes(x = PAR_limit, y = global_perc*100)) +
   geom_line(aes(group = site), colour = "black", linewidth = 2.5) +
   geom_line(aes(colour = site), linewidth = 2) +
   scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0),

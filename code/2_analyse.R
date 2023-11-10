@@ -144,16 +144,16 @@ save(PAR_spatial_lm, file = "data/PAR_spatial_lm.RData")
 
 # Get base for P-functions
 ## NB: Run one at a time
-P_kong <- calc_p_function(PAR_kong, site_name = "kong")
-P_is <- calc_p_function(PAR_is, site_name = "is")
-P_stor <- calc_p_function(PAR_stor, site_name = "stor")
-P_young <- calc_p_function(PAR_young, site_name = "young")
-P_disko <- calc_p_function(PAR_disko, site_name = "disko")
-P_nuup <- calc_p_function(PAR_nuup, site_name = "nuup")
-P_por <- calc_p_function(PAR_por, site_name = "por")
+# P_kong <- calc_p_function(PAR_kong, site_name = "kong")
+# P_is <- calc_p_function(PAR_is, site_name = "is")
+# P_stor <- calc_p_function(PAR_stor, site_name = "stor")
+# P_young <- calc_p_function(PAR_young, site_name = "young")
+# P_disko <- calc_p_function(PAR_disko, site_name = "disko")
+# P_nuup <- calc_p_function(PAR_nuup, site_name = "nuup")
+# P_por <- calc_p_function(PAR_por, site_name = "por")
 
 # Combine and save
-P_all <- rbind(P_kong, P_is, P_stor, P_young, P_disko, P_nuup, P_por)
-save(P_all, file = "data/P_all.RData")
-rm(P_kong, P_is, P_stor, P_young, P_disko, P_nuup, P_por); gc()
+# P_all <- rbind(P_kong, P_is, P_stor, P_young, P_disko, P_nuup, P_por)
+# save(P_all, file = "data/P_all.RData")
+# rm(P_kong, P_is, P_stor, P_young, P_disko, P_nuup, P_por); gc()
 
