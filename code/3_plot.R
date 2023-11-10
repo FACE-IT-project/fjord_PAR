@@ -512,6 +512,18 @@ ggsave("figures/fig_S2.png", fig_S2, height = 6, width = 8)
 # p-values of monthly slopes may be found here:
 PAR_monthly_lm
 
+# Process
+PAR_monthly_lm_round <- PAR_monthly_lm |> 
+  mutate(slope = round(slope, 4),
+         p.value = round(p.value, 2)) |> 
+  dplyr::select(site, month, slope, p.value)
+
+# Pivot wider and combine columns
+table_3 <- PAR_monthly_lm_round |> 
+  mutate(stat = paste0(slope," (",p.value,")")) |> 
+  dplyr::select(-slope, -p.value) |> 
+  pivot_wider(names_from = month, values_from = stat)
+
 
 # Table 4 -----------------------------------------------------------------
 # Changes to inhabitable area over time by site
@@ -550,7 +562,7 @@ PAR_spat_lm <- PAR_spatial_lm |> dplyr::select(-std.error) |>
          p.value = round(p.value, 2))
 
 # Combine
-table4 <- left_join(PAR_spat_base, PAR_spat_low, by = "site") |> 
+table_4 <- left_join(PAR_spat_base, PAR_spat_low, by = "site") |> 
   left_join(PAR_spat_high, by = "site") |> left_join(PAR_spat_lm, by = "site")
 
 
