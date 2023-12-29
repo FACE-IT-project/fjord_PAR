@@ -372,15 +372,17 @@ filter(PAR_monthly_lm, p.value <= 0.05)
 fig_4 <- PAR_monthly_summary |> 
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = year, y = q50)) +
-  geom_smooth(aes(colour = as.factor(month)), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_smooth(aes(colour = as.factor(month)), method = "lm", 
+              formula = "y ~ x", se = FALSE, linetype = "dashed") +
   geom_line(aes(group = as.factor(month)), linewidth = 1.5) +
   geom_line(aes(colour = as.factor(month)), linewidth = 1.0) +
-  facet_wrap(~site_long, nrow = 2, scales = "free_y") +
+  facet_wrap(~site_long, ncol = 2, scales = "free_y") +
   scale_x_continuous(expand = c(0, 0)) +
-  scale_fill_viridis_d("Month", option = "A", aesthetics = c("colour", "fill")) +
+  scale_colour_viridis_d("Month", option = "A") +
+  # guides(fill = guide_legend(override.aes = list(shape = 15))) + # Doesn't work...
   labs(x = "Year", y = latex2exp::TeX("PAR$_B$ [mol photons $m^{-2}$ d$^{-1}$]")) +
-  theme(legend.position = c(0.88, 0.21), 
-        legend.direction = "vertical",
+  theme(legend.position = c(0.75, 0.1), 
+        legend.direction = "horizontal",
         legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
         legend.box.background = element_rect(colour = "black", fill = "white"),
@@ -390,7 +392,7 @@ fig_4 <- PAR_monthly_summary |>
 # fig_4
 
 # Save
-ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 5, width = 10)
+ggsave(filename = "figures/fig_4.png", plot = fig_4, height = 7, width = 7)
 
 
 # Figure 5 ----------------------------------------------------------------
