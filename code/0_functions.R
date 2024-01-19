@@ -87,7 +87,6 @@ if(!exists("coastline_full_df")) load("metadata/coastline_full_df.RData")
 
 # Functions ---------------------------------------------------------------
 
-
 # Multi-core-able function to extract layers from PAR NetCDF to combine into 3D
 filter_3D_cube <- function(var_name, file_name, depth_mask){
   coord_mask <- depth_mask |> dplyr::select(lon, lat)
