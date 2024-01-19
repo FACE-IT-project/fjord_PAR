@@ -157,3 +157,8 @@ save(PAR_spatial_lm, file = "data/PAR_spatial_lm.RData")
 # save(P_all, file = "data/P_all.RData")
 # rm(P_kong, P_is, P_stor, P_young, P_disko, P_nuup, P_por); gc()
 
+
+# Monthly K_PAR -----------------------------------------------------------
+
+kong_K_PAR <- fl_LoadFjord("kong", "K_PAR", "data/PAR", TS = TRUE)
+

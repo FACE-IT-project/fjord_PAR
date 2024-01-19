@@ -124,6 +124,16 @@ ggsave("figures/kong_p.png", kong_p_plot, width = 14, height = 8)
 # Create plots (and csv files) that help investigate artefacts
 plyr::l_ply(long_site_names$site, plot_surface, .parallel = F)
 
+# Look at monthly K_PAR
+kong_K_PAR <- fl_LoadFjord("kong", "K_PAR", "data/PAR", TS = TRUE)
+kong_K_PAR_monthly_plot <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y = YearlyPfunction)) +
+  geom_line(aes(colour = Years, group = Years), linewidth = 2) +
+  scale_x_continuous(trans = ggforce::trans_reverser("log10"), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 40), expand = c(0, 0), breaks = c(10, 20, 30)) +
+  scale_colour_viridis_c() +
+  labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Year") +
+  theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
+
 
 # Figure 1 ----------------------------------------------------------------
 # Map of the study area + seven sites showing global surface PAR
