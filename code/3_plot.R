@@ -134,6 +134,10 @@ kong_K_PAR_monthly_plot <- ggplot(PAR_kong_p_yearly, aes(x = irradianceLevel, y 
   labs(x = "E mol photons m-2 day-1", y = "% of surface receiving more than E", colour = "Year") +
   theme(legend.position = "bottom", panel.background = element_rect(colour = "black", fill  = "grey"))
 
+KONG_PAR_B <- fl_LoadFjord("kong", dirdata = "data/PAR", TS = FALSE)
+P07 <- flget_climatology(KONG_PAR_B, optics = "PAR0m", period = "Clim", month = 7, PLOT = TRUE)
+print(P07)
+
 
 # Figure 1 ----------------------------------------------------------------
 # Map of the study area + seven sites showing global surface PAR
