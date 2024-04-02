@@ -42,15 +42,17 @@ bbox_por_df <- data.frame(region = "por", lon = bbox_por[1:2], lat = bbox_por[3:
 bbox_ALL_df <- rbind(bbox_kong_df, bbox_is_df, bbox_stor_df,
                      bbox_young_df, bbox_disko_df, bbox_nuup_df, bbox_por_df)
 
+
+
 # Colour palette for sites
 site_colours <- c(
-  "Kongsfjorden" = "chocolate3", 
-  "Isfjorden" = "goldenrod", 
-  "Storfjorden" = "burlywood3", 
-  "Young Sound" = "chartreuse3", 
-  "Qeqertarsuup Tunua" = "springgreen3", 
-  "Nuup Kangerlua" = "palegreen1", 
-  "Porsangerfjorden" = "plum3"
+  "Kongsfjorden" = RColorBrewer::brewer.pal(7, "Set1")[1], 
+  "Isfjorden" = RColorBrewer::brewer.pal(7, "Set1")[5], 
+  "Storfjorden" = RColorBrewer::brewer.pal(7, "Set1")[6], 
+  "Young Sound" = RColorBrewer::brewer.pal(7, "Set1")[7], 
+  "Qeqertarsuup Tunua" = RColorBrewer::brewer.pal(7, "Set1")[2], 
+  "Nuup Kangerlua" = RColorBrewer::brewer.pal(7, "Set1")[3], 
+  "Porsangerfjorden" = RColorBrewer::brewer.pal(7, "Set1")[4]
 )
 
 # Colour palette for sites
@@ -465,9 +467,15 @@ plot_surface <- function(site_short, bathy_opt = "c"){
 }
 
 # Convenience wrapper for Figure 1 subplots
-fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
-  # Prep data
-  PAR_df <- PAR_df |> 
+# testing...
+# PAR_list <- PAR_stor; site_name <- "Storfjorden"; PAR_limits <- PAR_quant
+fig_1_subplot <- function(PAR_list, site_name, PAR_limits){
+  
+  # Get bathymetry
+  bathy_df <- flget_bathymetry(PAR_list, what = "o", mode = "df", PLOT = FALSE) |> filter(!is.na(depth))
+  
+  # Extract and prep global surface data
+  PAR_df <- flget_climatology(PAR_list, optics = "PAR0m", period = "Global", mode = "df") |>
     filter(!is.na(PAR0m_Global)) |> 
     mutate(PAR0m_Global = case_when(PAR0m_Global > max(PAR_limits) ~ max(PAR_limits),
                                     PAR0m_Global < min(PAR_limits) ~ min(PAR_limits),
@@ -475,16 +483,28 @@ fig_1_subplot <- function(PAR_df, site_name, PAR_limits){
   # Get title
   panel_title <- paste0(site_letters[site_name]," ",site_name)
   
+  # Determine longitude plotting expansion
+  # if(site_name %in% c("Storfjorden", "Porsangerfjorden")){
+  #   x_set <- c(min())
+  # }
+  
+  # Determine lon/lat coord spacing
+  
+  # Plot
   ggplot(data = PAR_df, aes(x = longitude, y = latitude)) +
     # NB: Ignore geom_raster warning because geom_tile looks bad
     geom_raster(aes(fill = PAR0m_Global)) + 
-    # scale_fill_viridis_c() +
+    # geom_contour(data = filter(bathy_df, depth > -100), colour = "black", linetype = "solid",
+    #              aes(z = depth), breaks = -50, linewidth = 0.3, show.legend = F) +
     scale_fill_viridis_c(limits = PAR_limits) +
-    coord_quickmap(expand = FALSE) + 
-    labs(x = NULL, y = NULL, fill = latex2exp::TeX("PAR($0^-$)\n[mol photons $m^{-2}$ $d^{-1}$]"), title = panel_title) +
+    coord_quickmap(expand = FALSE)+#, xlim = x_set, ylim = y_set) + 
+    labs(x = "Longitude [°E]", y = "Latitude [°N]", 
+         fill = latex2exp::TeX("PAR($0^-$)\n[mol photons $m^{-2}$ $d^{-1}$]"), title = panel_title) +
     theme(legend.position = "none", # Remove legend
-          axis.text = element_blank(), axis.ticks = element_blank(), # Remove coords
+          title = element_text(size = 8),
+          # axis.text = element_blank(), axis.ticks = element_blank(), # Remove coords
           panel.background = element_rect(fill = "grey40"), # Background colour
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), # Remove axis lines
           panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 5))
+  # rm(PAR_list, site_name, PAR_limits); gc()
 }

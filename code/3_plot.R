@@ -149,13 +149,13 @@ print(P07)
 
 # Load base data
 # NB: Only used for Figure 1
-PAR_kong <- fl_LoadFjord("kong", "data/PAR")
-PAR_is <- fl_LoadFjord("is", "data/PAR")
-PAR_stor <- fl_LoadFjord("stor", "data/PAR")
-PAR_young <- fl_LoadFjord("young", "data/PAR")
-PAR_disko <- fl_LoadFjord("disko", "data/PAR")
-PAR_nuup <- fl_LoadFjord("nuup", "data/PAR")
-PAR_por <- fl_LoadFjord("por", "data/PAR")
+PAR_kong <- fl_LoadFjord("kong", dirdata = "data/PAR")
+PAR_is <- fl_LoadFjord("is", dirdata = "data/PAR")
+PAR_stor <- fl_LoadFjord("stor", dirdata = "data/PAR")
+PAR_young <- fl_LoadFjord("young", dirdata = "data/PAR")
+PAR_disko <- fl_LoadFjord("disko", dirdata = "data/PAR")
+PAR_nuup <- fl_LoadFjord("nuup", dirdata = "data/PAR")
+PAR_por <- fl_LoadFjord("por", dirdata = "data/PAR")
 
 # Extract global surface values
 PAR_global_kong <- flget_climatology(PAR_kong, optics = "PAR0m", period = "Global", mode = "df")
@@ -222,13 +222,13 @@ fig_1_base <- basemap(limits = c(-60, 30, 65, 90), bathymetry = T) +
 # fig_1_base
 
 # Add Surface PAR site panels
-fig_1_kong <- fig_1_subplot(PAR_global_kong, "Kongsfjorden", PAR_quant)
-fig_1_is <- fig_1_subplot(PAR_global_is, "Isfjorden", PAR_quant)
-fig_1_stor <- fig_1_subplot(PAR_global_stor, "Storfjorden", PAR_quant)
-fig_1_young <- fig_1_subplot(PAR_global_young, "Young Sound", PAR_quant)
-fig_1_disko <- fig_1_subplot(PAR_global_disko, "Qeqertarsuup Tunua", PAR_quant)
-fig_1_nuup <- fig_1_subplot(PAR_global_nuup, "Nuup Kangerlua", PAR_quant)
-fig_1_por <- fig_1_subplot(PAR_global_por, "Porsangerfjorden", PAR_quant)
+fig_1_kong <- fig_1_subplot(PAR_kong, "Kongsfjorden", PAR_quant)
+fig_1_is <- fig_1_subplot(PAR_is, "Isfjorden", PAR_quant)
+fig_1_stor <- fig_1_subplot(PAR_stor, "Storfjorden", PAR_quant)
+fig_1_young <- fig_1_subplot(PAR_young, "Young Sound", PAR_quant)
+fig_1_disko <- fig_1_subplot(PAR_disko, "Qeqertarsuup Tunua", PAR_quant)
+fig_1_nuup <- fig_1_subplot(PAR_nuup, "Nuup Kangerlua", PAR_quant)
+fig_1_por <- fig_1_subplot(PAR_por, "Porsangerfjorden", PAR_quant)
 
 # Get legend
 PAR_legend_base <- PAR_global_kong %>% 
@@ -251,6 +251,8 @@ PAR_legend <- ggpubr::get_legend(PAR_legend_base)
 
 # Placeholder
 blank_plot <- ggplot() + geom_blank() + theme_void()
+
+# Table with shallow and coastal pixels per site
 
 # Combine and save
 fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, blank_plot,
