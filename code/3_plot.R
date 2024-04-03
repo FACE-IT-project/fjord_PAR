@@ -253,16 +253,23 @@ PAR_legend <- ggpubr::get_legend(PAR_legend_base)
 blank_plot <- ggplot() + geom_blank() + theme_void()
 
 # Table with shallow and coastal pixels per site
+fig_1_table <- plyr::ldply(list(PAR_kong, PAR_is, PAR_stor, PAR_young, PAR_disko, PAR_nuup, PAR_por), fig_1_depths)
+fig_1_table_raster <- fig_1_table |> flextable::flextable() |> flextable::as_raster()
+fig_1_table_grob <- ggplot() + theme_void() + 
+  annotation_custom(grid::rasterGrob(fig_1_table_raster), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)
 
 # Combine and save
 fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, blank_plot,
                                  fig_1_young, fig_1_disko, fig_1_nuup, fig_1_por,
                                  ncol = 4, nrow = 2)
-fig_1 <- ggpubr::ggarrange(fig_1_base, PAR_legend, fig_1_sites, 
-                           labels = c("A)", "", ""),
-                           ncol = 1, nrow = 3, heights = c(1.0, 0.2, 0.7)) +
+fig_1_panels <- ggpubr::ggarrange(fig_1_base, PAR_legend, fig_1_sites, 
+                                  labels = c("A)", "", ""), font.label = list(size = 10),
+                                  ncol = 1, nrow = 3, heights = c(1.0, 0.2, 0.7))
+fig_1 <- ggpubr::ggarrange(fig_1_panels, fig_1_table_grob,
+                           labels = c("", "I)"), font.label = list(size = 10),
+                           ncol = 1, nrow = 2, heights = c(1.0, 0.25)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_1.png", fig_1, height = 13, width = 10)
+ggsave("figures/fig_1.png", fig_1, height = 16, width = 10)
 
 
 # Figure 2 ----------------------------------------------------------------

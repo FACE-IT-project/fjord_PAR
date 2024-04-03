@@ -482,18 +482,20 @@ fig_1_subplot <- function(PAR_list, site_name, PAR_limits){
                                     TRUE ~ PAR0m_Global))
   # Get title
   panel_title <- paste0(site_letters[site_name]," ",site_name)
+  if(site_name == "Porsangerfjorden") panel_title <- "H) Porsanger" 
   
-  # Determine longitude plotting expansion
+  # TODO: Determine longitude plotting expansion
   # if(site_name %in% c("Storfjorden", "Porsangerfjorden")){
   #   x_set <- c(min())
   # }
   
-  # Determine lon/lat coord spacing
+  # TODO: Determine lon/lat coord label spacing
   
   # Plot
   ggplot(data = PAR_df, aes(x = longitude, y = latitude)) +
     # NB: Ignore geom_raster warning because geom_tile looks bad
     geom_raster(aes(fill = PAR0m_Global)) + 
+    # NB: Looks terrible...
     # geom_contour(data = filter(bathy_df, depth > -100), colour = "black", linetype = "solid",
     #              aes(z = depth), breaks = -50, linewidth = 0.3, show.legend = F) +
     scale_fill_viridis_c(limits = PAR_limits) +
@@ -501,10 +503,42 @@ fig_1_subplot <- function(PAR_list, site_name, PAR_limits){
     labs(x = "Longitude [°E]", y = "Latitude [°N]", 
          fill = latex2exp::TeX("PAR($0^-$)\n[mol photons $m^{-2}$ $d^{-1}$]"), title = panel_title) +
     theme(legend.position = "none", # Remove legend
-          title = element_text(size = 8),
+          title = element_text(size = 8, face = "bold"),
           # axis.text = element_blank(), axis.ticks = element_blank(), # Remove coords
           panel.background = element_rect(fill = "grey40"), # Background colour
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), # Remove axis lines
           panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 5))
   # rm(PAR_list, site_name, PAR_limits); gc()
+}
+
+# Get area and pixel for coastal and shallow
+fig_1_depths <- function(PAR_list){
+  
+  # Get parametres
+  param_df <- as.data.frame(t(flget_geoparameters(PAR_list))) |> mutate(site = PAR_list$name)
+  
+  # Get bathymetry
+  bathy_df <- flget_bathymetry(PAR_list, what = "o", mode = "df", PLOT = FALSE) |> filter(!is.na(depth))
+  
+  # Count depths
+  pixel_count <- filter(bathy_df, depth >= -200) |> distinct() |> mutate(coastal_n = n()) |> 
+    filter(depth >= -50) |> mutate(shallow_n = n()) |>  dplyr::select(coastal_n, shallow_n) |> distinct()
+  
+  # Combine and exit
+  res_df <- cbind(param_df, pixel_count) |>
+    mutate(site_average_longitude = round(site_average_longitude, 2),
+           site_average_latitude = round(site_average_latitude, 2),
+           site_average_resolution = plyr::round_any(sqrt(AreaOfCoastalZone/coastal_n)*1000, 50),
+           AreaOfCoastalZone = formatC(round(AreaOfCoastalZone), format = "d", big.mark = ","),
+           AreaOfShallowZone = formatC(round(AreaOfShallowZone), format = "d", big.mark = ","),
+           coastal_n = formatC(round(coastal_n), format = "d", big.mark = ","),
+           shallow_n = formatC(round(shallow_n), format = "d", big.mark = ",")) |> 
+    left_join(long_site_names, by = "site") |> 
+    dplyr::select(site_long, everything(), -site) |> 
+    dplyr::rename(Site = site_long, `Pixel resolution [m^2]` = site_average_resolution,
+                  `Longitude centre [°E]` = site_average_longitude, `Latitude centre [°N]` = site_average_latitude,
+                  `Coastal area [km^2]` = AreaOfCoastalZone, `Shallow area [km^2]` = AreaOfShallowZone,
+                  `Coastal area [pixels]` = coastal_n, `Shallow area [pixels]` = shallow_n)
+  return(res_df)
+  # rm(PAR_list, param_df, bathy_df, pixel_count); gc()
 }
