@@ -244,6 +244,7 @@ PAR_summarise <- function(PAR_df, site_name = NULL){
               mean = mean(value, na.rm = T),
               q90 = quantile(value, 0.9, na.rm = T),
               max = max(value, na.rm = T),
+              sd = sd(value, na.rm = T),
               .by = c(variable, all_of(group_col))) |> 
     mutate(across(min:max, \(x) round(x, 4)))
   
@@ -482,15 +483,32 @@ fig_1_subplot <- function(PAR_list, site_name, PAR_limits){
                                     TRUE ~ PAR0m_Global))
   # Get title
   panel_title <- paste0(site_letters[site_name]," ",site_name)
-  if(site_name == "Porsangerfjorden") panel_title <- "H) Porsanger" 
+  if(site_name == "Porsangerfjorden") panel_title <- "H) Porsanger"
+  if(site_name == "Qeqertarsuup Tunua") panel_title <- "F) Q. Tunua" 
   
-  # TODO: Determine longitude plotting expansion
-  # if(site_name %in% c("Storfjorden", "Porsangerfjorden")){
-  #   x_set <- c(min())
-  # }
-  
-  # TODO: Determine lon/lat coord label spacing
-  
+  # Determine longitude plotting expansion
+  if(site_name == "Kongsfjorden"){
+    x_set <- c(11.5, 12.0, 12.5); y_set <- c(78.9, 79.0, 79.1)
+  } 
+  if(site_name == "Isfjorden"){
+    x_set <- seq(13, 17, 1); y_set <- c(78.2, 78.6) 
+  }
+  if(site_name == "Storfjorden"){
+    x_set <- seq(18, 21, 1); y_set <- c(77.6, 78.0, 78.4)
+  } 
+  if(site_name == "Young Sound"){
+    x_set <- seq(-22, -20, 1); y_set <- c(74.3, 74.5)
+  } 
+  if(site_name == "Qeqertarsuup Tunua"){
+    x_set <- seq(-54, -50, 2); y_set <- c(69, 70)
+  } 
+  if(site_name == "Nuup Kangerlua"){
+    x_set <- seq(-52, -50, 1); y_set <- c(64.2, 64.6)
+  } 
+  if(site_name == "Porsangerfjorden"){
+    x_set <- c(25, 26, 27); y_set <- c(70.5, 71.0)
+  } 
+                                   
   # Plot
   ggplot(data = PAR_df, aes(x = longitude, y = latitude)) +
     # NB: Ignore geom_raster warning because geom_tile looks bad
@@ -499,7 +517,9 @@ fig_1_subplot <- function(PAR_list, site_name, PAR_limits){
     # geom_contour(data = filter(bathy_df, depth > -100), colour = "black", linetype = "solid",
     #              aes(z = depth), breaks = -50, linewidth = 0.3, show.legend = F) +
     scale_fill_viridis_c(limits = PAR_limits) +
-    coord_quickmap(expand = FALSE)+#, xlim = x_set, ylim = y_set) + 
+    scale_x_continuous(breaks = x_set) +
+    scale_y_continuous(breaks = y_set) +
+    coord_quickmap(expand = FALSE) + 
     labs(x = "Longitude [°E]", y = "Latitude [°N]", 
          fill = latex2exp::TeX("PAR($0^-$)\n[mol photons $m^{-2}$ $d^{-1}$]"), title = panel_title) +
     theme(legend.position = "none", # Remove legend
@@ -508,11 +528,11 @@ fig_1_subplot <- function(PAR_list, site_name, PAR_limits){
           panel.background = element_rect(fill = "grey40"), # Background colour
           panel.grid.major = element_blank(), panel.grid.minor = element_blank(), # Remove axis lines
           panel.border = element_rect(colour = site_colours[site_name], fill  = NA, linewidth = 5))
-  # rm(PAR_list, site_name, PAR_limits); gc()
+  # rm(PAR_list, site_name, PAR_limits, x_set, y_set); gc()
 }
 
 # Get area and pixel for coastal and shallow
-fig_1_depths <- function(PAR_list){
+table_2_calc <- function(PAR_list){
   
   # Get parametres
   param_df <- as.data.frame(t(flget_geoparameters(PAR_list))) |> mutate(site = PAR_list$name)

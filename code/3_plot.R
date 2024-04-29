@@ -216,7 +216,7 @@ fig_1_base <- basemap(limits = c(-60, 30, 65, 90), bathymetry = T) +
         plot.background = element_rect(fill = "white", colour = NA),
         axis.text = element_text(colour = "black", size = 10),
         legend.direction = "horizontal",
-        legend.position = c(0.28, 0.932),
+        legend.position = c(0.295, 0.932),
         legend.box.margin = margin(5, 20, 5, 10), 
         legend.box.background = element_rect(fill = "white", colour = "black"))
 # fig_1_base
@@ -246,30 +246,22 @@ PAR_legend_base <- PAR_global_kong %>%
         legend.text = element_text(size = 12),
         legend.title = element_text(size = 14),
         legend.box.background = element_rect(fill = NA, colour = NA))
+
 # PAR_legend_base
 PAR_legend <- ggpubr::get_legend(PAR_legend_base)
 
 # Placeholder
 blank_plot <- ggplot() + geom_blank() + theme_void()
 
-# Table with shallow and coastal pixels per site
-fig_1_table <- plyr::ldply(list(PAR_kong, PAR_is, PAR_stor, PAR_young, PAR_disko, PAR_nuup, PAR_por), fig_1_depths)
-fig_1_table_raster <- fig_1_table |> flextable::flextable() |> flextable::as_raster()
-fig_1_table_grob <- ggplot() + theme_void() + 
-  annotation_custom(grid::rasterGrob(fig_1_table_raster), xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)
-
 # Combine and save
 fig_1_sites <- ggpubr::ggarrange(fig_1_kong, fig_1_is, fig_1_stor, blank_plot,
                                  fig_1_young, fig_1_disko, fig_1_nuup, fig_1_por,
                                  ncol = 4, nrow = 2)
-fig_1_panels <- ggpubr::ggarrange(fig_1_base, PAR_legend, fig_1_sites, 
+fig_1 <- ggpubr::ggarrange(fig_1_base, PAR_legend, fig_1_sites, 
                                   labels = c("A)", "", ""), font.label = list(size = 10),
-                                  ncol = 1, nrow = 3, heights = c(1.0, 0.2, 0.7))
-fig_1 <- ggpubr::ggarrange(fig_1_panels, fig_1_table_grob,
-                           labels = c("", "I)"), font.label = list(size = 10),
-                           ncol = 1, nrow = 2, heights = c(1.0, 0.25)) +
+                                  ncol = 1, nrow = 3, heights = c(1.0, 0.15, 0.75)) +
   ggpubr::bgcolor("white") + ggpubr::border("white")
-ggsave("figures/fig_1.png", fig_1, height = 16, width = 10)
+ggsave("figures/fig_1.png", fig_1, height = 12, width = 9)
 
 
 # Figure 2 ----------------------------------------------------------------
@@ -281,6 +273,7 @@ fig_2a <- PAR_clim_summary |>
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = month, y = q50)) +
   # geom_line(aes(group = site_long), linewidth = 1.7) +
+  geom_ribbon(aes(ymin = q50-sd, ymax = q50+sd, fill = site_long), alpha = 0.1) +
   geom_line(aes(colour = site_long), linewidth = 1.2) |> 
   copy_under(aes(group = site_long), color = "black", linewidth = 1.7) +
   scale_x_continuous(expand = c(0, 0)) +
@@ -288,11 +281,7 @@ fig_2a <- PAR_clim_summary |>
   labs(x = "Month",
        y = latex2exp::TeX("PAR($0^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
-        legend.text = element_text(colour = "black", size = 10),
-        legend.spacing.x = unit(0.3, "cm"),
-        legend.box.background = element_rect(colour = "black", fill = "white"),
-        legend.box.margin = margin(2, 20, 2, 2),
-        # legend.text.align = 1,
+        legend.text = element_text(colour = "black", size = 10, margin = margin(r = 10)),
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         plot.margin = margin(5, 20, 10, 5),
@@ -304,16 +293,16 @@ fig_2b <- PAR_clim_summary |>
   filter(variable == "ClimKpar") |> 
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = month, y = q50)) +
+  geom_ribbon(aes(ymin = q50-sd, ymax = q50+sd, fill = site_long), alpha = 0.1) +
   geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(breaks = c(0.1, 0.2, 0.3, 0.4)) +
   scale_fill_manual("Site", values = site_colours, aesthetics = c("colour", "fill")) +
   labs(x = "Month",
        y = latex2exp::TeX("K$_{PAR}$ [$m^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
         legend.text = element_text(colour = "black", size = 10),
-        legend.box.background = element_rect(colour = "black", fill = "white"),
-        legend.box.margin = margin(2,15,2,2),
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
@@ -339,6 +328,7 @@ fig_3a <- PAR_annual_summary |>
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = year, y = q50)) +
   geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_ribbon(aes(ymin = q50-sd, ymax = q50+sd, fill = site_long), alpha = 0.2) +
   geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
@@ -346,9 +336,7 @@ fig_3a <- PAR_annual_summary |>
   labs(x = "Year", 
        y = latex2exp::TeX("PAR($0^-$) [mol photons $m^{-2}$ $d^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
-        legend.text = element_text(colour = "black", size = 10),
-        legend.box.background = element_rect(colour = "black", fill = "white"),
-        legend.box.margin = margin(2,15,2,2),
+        legend.text = element_text(colour = "black", size = 10, margin = margin(r = 10)),
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
@@ -360,6 +348,7 @@ fig_3b <- PAR_annual_summary |>
   left_join(long_site_names, by = "site") |> 
   ggplot(aes(x = year, y = q50)) +
   geom_smooth(aes(colour = site_long), method = "lm", formula = "y ~ x", se = FALSE, linetype = "dashed") +
+  geom_ribbon(aes(ymin = q50-sd, ymax = q50+sd, fill = site_long), alpha = 0.2) +
   geom_line(aes(group = site_long), linewidth = 1.7) +
   geom_line(aes(colour = site_long), linewidth = 1.2) +
   scale_x_continuous(expand = c(0, 0)) +
@@ -367,8 +356,7 @@ fig_3b <- PAR_annual_summary |>
   labs(x = "Year",
        y = latex2exp::TeX("K$_{PAR}$ [$m^{-1}$]")) +
   theme(legend.title = element_text(colour = "black", size = 12),
-        legend.text = element_text(colour = "black", size = 10),
-        legend.box.background = element_rect(colour = "black", fill = "white"),
+        legend.text = element_text(colour = "black", size = 10, margin = margin(r = 10)),
         axis.text = element_text(colour = "black", size = 10),
         axis.title = element_text(colour = "black", size = 12),
         panel.border = element_rect(colour = "black", fill  = NA))
@@ -527,11 +515,15 @@ ggsave("figures/fig_S2.png", fig_S2, height = 6, width = 8)
 
 
 # Table 2 -----------------------------------------------------------------
+# Table with shallow and coastal pixels per site
+table_2 <- plyr::ldply(list(PAR_kong, PAR_is, PAR_stor, PAR_young, PAR_disko, PAR_nuup, PAR_por), table_2_calc)
+
+# Table 3 -----------------------------------------------------------------
 # Light requirements by species
 # This was manually compiled by the co-authors directly within the manuscript
 
 
-# Table 3 -----------------------------------------------------------------
+# Table 4 -----------------------------------------------------------------
 # Slope statistics for monthly PAR_B trends per site
 
 # p-values of monthly slopes may be found here:
@@ -550,7 +542,7 @@ table_3 <- PAR_monthly_lm_round |>
   pivot_wider(names_from = month, values_from = stat)
 
 
-# Table 4 -----------------------------------------------------------------
+# Table 5 -----------------------------------------------------------------
 # Changes to inhabitable area over time by site
 
 # Round for table
@@ -591,12 +583,22 @@ table_4 <- left_join(PAR_spat_base, PAR_spat_low, by = "site") |>
   left_join(PAR_spat_high, by = "site") |> left_join(PAR_spat_lm, by = "site")
 
 
-# Table 5 -----------------------------------------------------------------
+# Table 6 -----------------------------------------------------------------
 # List of variable names per value
 # Compiled manually
 
+# SD variable names
+kong_PAR_B <- fl_LoadFjord("kong", "PAR_B", "data/PAR", TS = FALSE)
+kong_K_PAR <- fl_LoadFjord("kong", "K_PAR", "data/PAR", TS = FALSE)
+kong_YearlySD <- fl_LoadFjord("kong", "YearlySD", "data/PAR")
+kong_ClimSD <- fl_LoadFjord("kong", "ClimSD", "data/PAR")
 
-# Table 6 -----------------------------------------------------------------
+
+# Table 7 -----------------------------------------------------------------
 # List of additional meta-data within each NetCDF
 # Compiled manually
+
+
+# Table 8 -----------------------------------------------------------------
+# Count of good and bad pixels per site per month per year
 
