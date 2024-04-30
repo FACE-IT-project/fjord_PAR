@@ -599,6 +599,25 @@ kong_ClimSD <- fl_LoadFjord("kong", "ClimSD", "data/PAR")
 # Compiled manually
 
 
-# Table 8 -----------------------------------------------------------------
+# Table S1 ----------------------------------------------------------------
 # Count of good and bad pixels per site per month per year
+
+# Load metadata
+miss_kong <- read_csv("metadata/kong_percent_20.csv") |> mutate(site = "Kongsfjorden")
+miss_is <- read_csv("metadata/is_percent_20.csv") |> mutate(site = "Isfjorden")
+miss_stor <- read_csv("metadata/stor_percent_20.csv") |> mutate(site = "Storfjorden")
+miss_young <- read_csv("metadata/young_percent_20.csv") |> mutate(site = "Young Sound")
+miss_disko <- read_csv("metadata/disko_percent_20.csv") |> mutate(site = "Qeqertarsuup Tunua")
+miss_nuup <- read_csv("metadata/disko_percent_20.csv") |> mutate(site = "Nuup Kangerlua")
+miss_por <- read_csv("metadata/disko_percent_20.csv") |> mutate(site = "Porsangerfjorden")
+miss_ALL <- rbind(miss_kong, miss_is, miss_stor, miss_young, miss_disko, miss_nuup, miss_por)
+
+# Pivot to desired shape
+miss_long <- miss_ALL |> dplyr::select(-`...1`) |> 
+  pivot_wider(names_from = year, values_from = percent) |> 
+  dplyr::select(site, month, everything()) |> 
+  dplyr::rename(Site = site, Month = month)
+
+# Save as .csv for easier use
+write_csv(miss_long, "metadata/all_site_percent_20.csv")
 
